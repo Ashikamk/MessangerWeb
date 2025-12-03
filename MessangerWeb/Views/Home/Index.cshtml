@@ -1,0 +1,81 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to ChatConnect</title>
+    <style>
+        /* Modern Workspace Background & Centering */
+        body {
+            margin: 0;
+            height: 100vh;
+            background: linear-gradient(rgba(184, 233, 148, 0.85), rgba(184, 233, 148, 0.85)), url('https://images.unsplash.com/photo-1568992688065-536aad8a12f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2069&q=80') center/cover no-repeat;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 60px;
+            color: #1b3a2e;
+            margin-bottom: 30px;
+            font-weight: 700;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+        }
+
+        p {
+            font-size: 30px;
+            color: #14532d;
+            margin-bottom: 60px;
+            white-space: nowrap;
+            text-shadow: 1px 1px 6px rgba(0,0,0,0.2);
+        }
+
+        /* Buttons */
+        .btn {
+            width: 280px;
+            margin: 15px auto;
+            padding: 16px 0;
+            font-size: 18px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            display: block;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.5);
+        }
+
+        .btn-admin {
+            background-color: #ff4757;
+        }
+
+        .btn-user {
+            background-color: #1e90ff;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.7);
+            opacity: 0.95;
+        }
+
+        /* Responsive adjustments */
+
+
+        }</style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to ChatConnect!</h1>
+        <p>Start a conversation, meet new people, and stay connected — all in one place.</p>
+        <button class="btn btn-admin" onclick="location.href='/Account/AdminLogin'">Admin Login</button>
+        <button class="btn btn-user" onclick="location.href='/Account/UserLogin'">User Login</button>
+    </div>
+</body>
+</html>

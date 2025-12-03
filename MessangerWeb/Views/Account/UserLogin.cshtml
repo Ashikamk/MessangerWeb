@@ -1,0 +1,208 @@
+﻿@model MessangerWeb.Models.LoginViewModel
+
+@{
+    ViewData["Title"] = "User Login";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Login - ChatConnect</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(rgba(184, 233, 148, 0.85), rgba(184, 233, 148, 0.85)), url('https://images.unsplash.com/photo-1497366754035-f200968a6e72?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2069&q=80') center/cover no-repeat;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            position: relative;
+        }
+
+        .login-card {
+            background: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        h3 {
+            color: #1b3a2e;
+            margin-bottom: 30px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            text-align: left;
+            margin-bottom: 8px;
+            color: #14532d;
+            font-weight: 600;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+            .form-control:focus {
+                outline: none;
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            }
+
+        .btn-success {
+            width: 100%;
+            padding: 12px;
+            background: #16a34a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+            .btn-success:hover {
+                background: #15803d;
+                transform: translateY(-2px);
+            }
+
+        .alert-danger {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .text-muted {
+            color: #6b7280 !important;
+            font-size: 14px;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h3>User Login</h3>
+
+        @if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
+        {
+            <div class="alert-danger" role="alert">
+                @ViewBag.ErrorMessage
+            </div>
+        }
+
+        <form id="loginForm" asp-action="UserLogin" asp-controller="Account" method="post">
+            <div class="form-group">
+                <label for="Email" class="form-label">Email</label>
+                <input type="email"
+                       id="Email"
+                       name="Email"
+                       class="form-control"
+                       placeholder="Enter your email"
+                       required />
+            </div>
+
+            <div class="form-group">
+                <label for="Password" class="form-label">Password</label>
+                <input type="password"
+                       id="Password"
+                       name="Password"
+                       class="form-control"
+                       placeholder="Enter your password"
+                       required />
+            </div>
+
+            <button type="submit" class="btn-success">Login</button>
+        </form>
+
+
+    </div>
+
+    <script>
+        (function() {
+            var emailInput = document.getElementById('Email');
+            var form = document.getElementById('loginForm');
+
+            // Clear email if login was successful
+            @if (TempData["ClearLoginEmail"] != null)
+            {
+                            <text>
+                            localStorage.removeItem('userLoginEmail');
+                            </text>
+            }
+
+            // Restore email
+            var savedEmail = localStorage.getItem('userLoginEmail');
+            if (savedEmail && emailInput) {
+                emailInput.value = savedEmail;
+            }
+
+            // Save email before submit
+            if (form) {
+                form.addEventListener('submit', function() {
+                    if (emailInput && emailInput.value) {
+                        localStorage.setItem('userLoginEmail', emailInput.value);
+                    }
+                });
+            }
+
+            // Save on keystroke
+            if (emailInput) {
+                emailInput.addEventListener('input', function() {
+                    if (this.value) {
+                        localStorage.setItem('userLoginEmail', this.value);
+                    }
+                });
+            }
+
+            // Clear on logout
+            var urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('clear') === 'true') {
+                localStorage.removeItem('userLoginEmail');
+            }
+        })();
+    </script>
+</body>
+</html>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

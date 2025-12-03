@@ -1,0 +1,4901 @@
+﻿@model MessangerWeb.Models.UserDashboardViewModel
+
+@{
+    ViewData["Title"] = "User Dashboard";
+}
+
+<style>
+    /* [All your existing CSS styles remain exactly the same] */
+    body {
+        font-family: 'Segoe UI', sans-serif;
+        background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .dashboard-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 65px;
+        background: white;
+        color: darkblue;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 25px;
+        z-index: 1000;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        flex: 1;
+    }
+
+    .welcome-text {
+        flex: 1;
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        color: darkblue;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .profile-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        padding: 0;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        width: 50px;
+        height: 50px;
+        overflow: hidden;
+        border: 2px solid rgba(255, 255, 255, 0.5);
+    }
+
+        .profile-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: white;
+            transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+        }
+
+    .profile-btn-image {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .profile-btn-placeholder {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 18px;
+    }
+
+    .logout-btn {
+        background: #f56565;
+        color: white;
+        border: 2px solid white;
+        padding: 10px 20px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+        .logout-btn:hover {
+            background: white;
+            color: #f56565;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 101, 101, 0.4);
+        }
+
+    .video-call-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+        margin-left: 15px;
+    }
+
+        .video-call-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .video-call-btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+    /* Incoming Call Modal */
+    .incoming-call-modal {
+        display: none;
+        position: fixed;
+        z-index: 10000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(10px);
+        animation: fadeIn 0.3s ease;
+    }
+
+    .incoming-call-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 30px;
+        padding: 40px;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        min-width: 400px;
+        animation: slideUp 0.4s ease;
+    }
+
+    .caller-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        margin: 0 auto 20px;
+        border: 5px solid white;
+        object-fit: cover;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .caller-avatar-placeholder {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        margin: 0 auto 20px;
+        border: 5px solid white;
+        background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 48px;
+        font-weight: bold;
+        color: #667eea;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .caller-name {
+        color: white;
+        font-size: 28px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .call-status {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 18px;
+        margin-bottom: 30px;
+    }
+
+    .call-actions {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+    }
+
+    .accept-call-btn, .reject-call-btn {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        font-size: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .accept-call-btn {
+        background: #48bb78;
+        color: white;
+    }
+
+        .accept-call-btn:hover {
+            background: #38a169;
+            transform: scale(1.1);
+        }
+
+    .reject-call-btn {
+        background: #f56565;
+        color: white;
+    }
+
+        .reject-call-btn:hover {
+            background: #e53e3e;
+            transform: scale(1.1);
+        }
+
+    /* Video Call Interface */
+    .video-call-interface {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: #1a1a1a;
+    }
+
+    .video-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+    }
+
+    #remoteVideo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        background: #000;
+    }
+
+    #localVideo {
+        position: absolute;
+        bottom: 100px;
+        right: 30px;
+        width: 250px;
+        height: 180px;
+        border-radius: 15px;
+        object-fit: cover;
+        border: 3px solid white;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        background: #2d3748;
+    }
+
+    .video-controls {
+        position: absolute;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 20px;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 15px 30px;
+        border-radius: 50px;
+        backdrop-filter: blur(10px);
+    }
+
+    .control-btn {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        font-size: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        color: white;
+    }
+
+        .control-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .control-btn.mute-audio {
+            background: #4299e1;
+        }
+
+            .control-btn.mute-audio.active {
+                background: #2c5282;
+            }
+
+        .control-btn.mute-video {
+            background: #48bb78;
+        }
+
+            .control-btn.mute-video.active {
+                background: #2f855a;
+            }
+
+        .control-btn.share-screen {
+            background: #ed8936;
+        }
+
+            .control-btn.share-screen.active {
+                background: #c05621;
+            }
+
+        .control-btn.end-call {
+            background: #f56565;
+            width: 70px;
+            height: 70px;
+        }
+
+            .control-btn.end-call:hover {
+                background: #c53030;
+            }
+
+    .call-timer {
+        position: absolute;
+        top: 30px;
+        left: 30px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 25px;
+        font-size: 18px;
+        font-weight: 600;
+        backdrop-filter: blur(10px);
+    }
+
+    .call-status-indicator {
+        position: absolute;
+        top: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 25px;
+        font-size: 16px;
+        backdrop-filter: blur(10px);
+    }
+
+    .ringing {
+        animation: pulse 1s infinite;
+    }
+
+    /* No Video Placeholder */
+    .no-video-placeholder {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: white;
+    }
+
+    .no-video-avatar {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        margin: 0 auto 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 60px;
+        font-weight: bold;
+    }
+
+    .no-video-name {
+        font-size: 28px;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(102, 126, 234, 0.15);
+        backdrop-filter: blur(10px);
+    }
+
+    .modal-content {
+        background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%);
+        margin: 5% auto;
+        padding: 0;
+        border-radius: 20px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.3);
+        animation: modalSlideIn 0.3s ease-out;
+        overflow: hidden;
+        max-height: 90vh;
+        overflow-y: auto;
+        border: 2px solid rgba(102, 126, 234, 0.2);
+    }
+
+    .modal-header {
+        padding: 20px 25px;
+        border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 600;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+    .close-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: white;
+        padding: 0;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+    }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+
+    .modal-body {
+        padding: 30px;
+        background: white;
+    }
+
+    .profile-image-section {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .profile-image-container {
+        position: relative;
+        display: inline-block;
+        margin-bottom: 15px;
+    }
+
+    .profile-image-preview, .group-image-preview {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid #667eea;
+        background: #f7fafc;
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .profile-image-placeholder, .group-image-placeholder {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 48px;
+        font-weight: bold;
+        border: 4px solid #667eea;
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .change-photo-btn {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: 2px solid white;
+        border-radius: 50%;
+        width: 45px;
+        height: 45px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    /* Group Call Participants */
+    .group-call-participants {
+        position: absolute;
+        top: 80px;
+        left: 30px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 25px;
+        font-size: 14px;
+        font-weight: 600;
+        backdrop-filter: blur(10px);
+        max-width: 300px;
+    }
+
+    .participant-list {
+        margin-top: 8px;
+        max-height: 150px;
+        overflow-y: auto;
+    }
+
+    .participant-item {
+        display: flex;
+        align-items: center;
+        padding: 4px 0;
+        font-size: 12px;
+    }
+
+    .participant-status {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+
+        .participant-status.connected {
+            background: #48bb78;
+        }
+
+        .participant-status.disconnected {
+            background: #f56565;
+        }
+
+        .participant-status.pending {
+            background: #ed8936;
+        }
+
+    .change-photo-btn:hover {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        transform: scale(1.15);
+    }
+
+    .file-input {
+        display: none;
+    }
+
+    .form-group {
+        margin-bottom: 25px;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #5a67d8;
+        font-size: 16px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 14px 16px;
+        border: 2px solid #cbd5e0;
+        border-radius: 12px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+        background: #f7fafc;
+    }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+    .message-sender {
+        font-weight: bold;
+        margin-bottom: 5px;
+        font-size: 12px;
+        color: #5a67d8;
+        text-transform: capitalize;
+        text-align: left;
+    }
+
+    .received-sender {
+        color: #5a67d8;
+        text-align: left;
+    }
+
+    .sent-sender {
+        color: rgba(255, 255, 255, 0.9);
+        text-align: left;
+    }
+
+    .sent .message-sender {
+        color: rgba(255, 255, 255, 0.9);
+        text-align: left;
+    }
+
+    .modal-footer {
+        padding: 20px 25px;
+        border-top: 2px solid rgba(102, 126, 234, 0.2);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background: #f7fafc;
+    }
+
+    .save-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 25px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        min-width: 120px;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .save-btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+    .cancel-btn {
+        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+        color: #4a5568;
+        border: 2px solid #cbd5e0;
+        padding: 12px 25px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        min-width: 120px;
+    }
+
+        .cancel-btn:hover {
+            background: white;
+            border-color: #667eea;
+            color: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        }
+
+    .error-message {
+        color: #f56565;
+        font-size: 14px;
+        margin-top: 8px;
+        display: none;
+        font-weight: 500;
+    }
+
+    .success-message {
+        color: #48bb78;
+        font-size: 14px;
+        margin-top: 8px;
+        display: none;
+        font-weight: 500;
+    }
+
+    .no-users {
+        text-align: center;
+        color: #667eea;
+        font-style: italic;
+        padding: 20px;
+        display: flex !important;
+        justify-content: center;
+        align-items: center;
+        background: #f7fafc;
+        border-radius: 8px;
+        margin: 10px 20px;
+        font-size: 16px;
+    }
+
+    #noResultsMessage {
+        text-align: center;
+        color: #667eea;
+        font-style: italic;
+        padding: 30px 20px;
+        background: #f7fafc;
+        border-radius: 8px;
+        margin: 10px 20px;
+        font-size: 16px;
+        border: 2px dashed #cbd5e0;
+    }
+
+    /* Members Selection */
+    .members-list {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 2px solid #cbd5e0;
+        border-radius: 12px;
+        padding: 10px;
+        background: #f7fafc;
+    }
+
+    .member-item {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        background: white;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+    }
+
+        .member-item:hover {
+            background: #edf2f7;
+            border-color: #667eea;
+        }
+
+    .member-checkbox {
+        margin-right: 12px;
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #667eea;
+    }
+
+    .member-photo {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-right: 12px;
+        border: 2px solid #cbd5e0;
+    }
+
+    .member-default-avatar {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 12px;
+        font-size: 12px;
+    }
+
+    .member-name {
+        font-weight: 500;
+        color: #4a5568;
+        flex: 1;
+    }
+
+    /* User List Section */
+    .dashboard-container {
+        position: absolute;
+        top: 65px;
+        left: 0;
+        width: 100%;
+        height: calc(100vh - 65px);
+        display: flex;
+        background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
+        overflow: hidden;
+    }
+
+    .user-list-section {
+        width: 350px;
+        background: white;
+        border-right: 3px solid #cbd5e0;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 2px 0 10px rgba(102, 126, 234, 0.1);
+    }
+
+    .user-list-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 15px;
+        color: #fff;
+    }
+
+    .user-list-title {
+        font-weight: 700;
+        font-size: 30px;
+        margin-bottom: 10px;
+        letter-spacing: 2px;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .chat-filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+    }
+
+    .filter-btn,
+    .create-group-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+        font-size: 12px;
+    }
+
+        .filter-btn:hover,
+        .create-group-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: white;
+        }
+
+        .filter-btn.active {
+            background: white;
+            color: #667eea;
+            border-color: white;
+        }
+
+    .create-group-btn {
+        background: hotpink;
+        color: white;
+        width: 250px;
+        font-size: 13px;
+        font-weight: bolder;
+        height: 50px;
+        border-color: white;
+        font-weight: 700;
+    }
+
+        .create-group-btn:hover {
+            background: pink;
+            border-color: white;
+            transform: scale(1.05);
+        }
+
+    .user-list {
+        margin-top: 20px;
+        flex: 1;
+        padding: 0 20px 20px 20px;
+        overflow-y: auto;
+    }
+
+        .user-list ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+    .user-item {
+        display: flex;
+        align-items: center;
+        background: #f7fafc;
+        border: 2px solid transparent;
+        border-radius: 12px;
+        padding: 12px 15px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+        position: relative;
+        min-height: 60px;
+    }
+
+        .user-item:hover {
+            background: #edf2f7;
+            border-color: #667eea;
+            transform: translateX(5px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .user-item.active {
+            background: linear-gradient(135deg, #c3dafe 0%, #e9d8fd 100%);
+            border-color: #667eea;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+            .user-item.active .user-name {
+                position: relative;
+                z-index: 1;
+                flex: 1;
+                color: #5a67d8;
+                font-weight: 600;
+            }
+
+            .user-item.active .unread-dot {
+                background: #667eea;
+            }
+
+    .user-photo {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        position: relative;
+        z-index: 1;
+        object-fit: cover;
+        margin-right: 15px;
+        border: 2px solid #cbd5e0;
+    }
+
+    .user-name {
+        font-weight: 500;
+        color: #4a5568;
+        font-size: 16px;
+        flex: 1;
+    }
+
+    .default-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        z-index: 1;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 15px;
+        font-size: 14px;
+    }
+
+    .no-users {
+        text-align: center;
+        color: #667eea;
+        font-style: italic;
+        padding: 20px;
+    }
+
+    /* Unread Message Dot */
+    .unread-dot {
+        width: 12px;
+        height: 12px;
+        background: #f56565;
+        border-radius: 50%;
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        animation: pulse 2s infinite;
+        box-shadow: 0 0 8px rgba(245, 101, 101, 0.5);
+    }
+
+    /* Chat Section */
+    .chat-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: white;
+    }
+
+    .chat-header {
+        padding: 15px 20px;
+        border-bottom: 3px solid #cbd5e0;
+        background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .chat-header-user-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .chat-header-photo {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #667eea;
+    }
+
+    .chat-header-default-avatar {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 16px;
+    }
+
+    .chat-header-text {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-header-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3748;
+        margin: 0;
+    }
+
+    .chat-messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: linear-gradient(135deg, #f7fafc 0%, #ffffff 100%);
+    }
+
+    .date-divider {
+        text-align: center;
+        margin: 20px 0;
+        position: relative;
+    }
+
+    .date-divider-text {
+        background: linear-gradient(135deg, #cbd5e0 0%, #e2e8f0 100%);
+        padding: 5px 15px;
+        border-radius: 15px;
+        color: #4a5568;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .message {
+        margin-bottom: 15px;
+        display: flex;
+    }
+
+        .message.sent {
+            justify-content: flex-end;
+        }
+
+        .message.received {
+            justify-content: flex-start;
+        }
+
+    .message-bubble {
+        max-width: 50%;
+        padding: 12px 16px;
+        border-radius: 18px;
+        position: relative;
+        text-align: left;
+    }
+
+    .sent .message-bubble {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-bottom-right-radius: 4px;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .received .message-bubble {
+        background: #edf2f7;
+        color: #2d3748;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .message-time {
+        font-size: 12px;
+        color: #4a5568;
+        margin-top: 5px;
+    }
+
+    .sent .message-time {
+        text-align: right;
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    /* Chat Input */
+    .chat-input-container {
+        padding: 10px 16px;
+        background: #f7fafc;
+        border-top: 2px solid #cbd5e0;
+    }
+
+    .message-bar {
+        display: flex;
+        align-items: flex-end;
+        background: white;
+        border-radius: 24px;
+        padding: 8px 12px;
+        border: 2px solid #cbd5e0;
+        gap: 8px;
+    }
+
+    .send-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        font-size: 16px;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+        .send-btn:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            transform: scale(1.1);
+        }
+
+        .send-btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+    .action-btn {
+        background: none;
+        border: none;
+        padding: 8px;
+        border-radius: 50%;
+        cursor: pointer;
+        color: #667eea;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        font-size: 18px;
+    }
+
+        .action-btn:hover {
+            background: #edf2f7;
+        }
+
+    /* Group Management */
+    .group-management-buttons {
+        display: flex;
+        gap: 10px;
+        margin-left: auto;
+    }
+
+    .group-management-btn {
+        background: #4299e1;
+        color: white;
+        border: 2px solid #667eea;
+        padding: 8px 16px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+        .group-management-btn:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+    .remove-member-btn {
+        background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 15px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+        .remove-member-btn:hover {
+            background: linear-gradient(135deg, #c53030 0%, #9b2c2c 100%);
+            box-shadow: 0 2px 8px rgba(245, 101, 101, 0.3);
+        }
+
+    /* Edit Group Styles */
+    .edit-group-image-preview,
+    .edit-group-image-placeholder {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 3px solid #667eea;
+        box-shadow: 0 6px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .edit-group-image-preview {
+        object-fit: cover;
+        background: #f7fafc;
+    }
+
+    .edit-group-image-placeholder {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        font-weight: bold;
+    }
+
+    .edit-group-change-photo-btn {
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: 2px solid white;
+        border-radius: 50%;
+        width: 35px;
+        height: 35px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
+    }
+
+        .edit-group-change-photo-btn:hover {
+            transform: scale(1.1);
+        }
+
+    /* Available Members */
+    .available-members-list {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 2px solid #cbd5e0;
+        border-radius: 12px;
+        padding: 10px;
+        background: #f7fafc;
+    }
+
+    .available-member-item {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        border-radius: 8px;
+        margin-bottom: 5px;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+    }
+
+        .available-member-item:hover {
+            background: #edf2f7;
+            border-color: #cbd5e0;
+        }
+
+        .available-member-item.selected {
+            background: linear-gradient(135deg, #edf2f7 0%, #e9d8fd 100%);
+            border: 2px solid #667eea;
+        }
+
+    .member-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-right: 12px;
+        object-fit: cover;
+        border: 2px solid #cbd5e0;
+    }
+
+    .member-info {
+        flex: 1;
+    }
+
+    .member-email {
+        font-size: 12px;
+        color: #718096;
+    }
+
+    .no-members-message {
+        text-align: center;
+        color: #667eea;
+        font-style: italic;
+        padding: 20px;
+    }
+
+    .no-chat-selected {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+        color: #667eea;
+        font-size: 18px;
+        font-weight: 500;
+    }
+
+    .no-messages {
+        text-align: center;
+        color: #667eea;
+        font-style: italic;
+        padding: 20px;
+    }
+
+    /* Text Editor Toolbar */
+    .editor-toolbar {
+        display: none;
+        gap: 4px;
+        margin-bottom: 8px;
+        padding: 6px 8px;
+        background: white;
+        border-radius: 12px;
+        border: 2px solid #cbd5e0;
+        flex-wrap: wrap;
+    }
+
+        .editor-toolbar.active {
+            display: flex;
+        }
+
+    .toolbar-btn {
+        background: none;
+        border: none;
+        padding: 4px 6px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        min-width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #667eea;
+        transition: all 0.2s;
+    }
+
+        .toolbar-btn:hover {
+            background: #edf2f7;
+        }
+
+        .toolbar-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+    .font-family-select, .font-size-select {
+        padding: 2px 4px;
+        border: 1px solid #cbd5e0;
+        border-radius: 6px;
+        background: white;
+        font-size: 11px;
+        color: #667eea;
+    }
+
+    .color-picker {
+        width: 28px;
+        height: 28px;
+        padding: 1px;
+        border: 1px solid #cbd5e0;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .toolbar-separator {
+        width: 1px;
+        background: #cbd5e0;
+        margin: 0 4px;
+        height: 20px;
+        align-self: center;
+    }
+
+    .color-picker-container {
+        display: flex;
+        gap: 2px;
+    }
+
+    .rich-text-message {
+        line-height: 1.4;
+        text-align: left;
+    }
+
+        .rich-text-message strong {
+            font-weight: bold;
+        }
+
+        .rich-text-message em {
+            font-style: italic;
+        }
+
+        .rich-text-message u {
+            text-decoration: underline;
+        }
+
+        .rich-text-message s {
+            text-decoration: line-through;
+        }
+
+    /* File Messages */
+    .file-message {
+        padding: 10px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.9);
+        margin: 5px 0;
+    }
+
+    .file-icon {
+        font-size: 24px;
+        margin-right: 10px;
+    }
+
+    .file-info {
+        display: flex;
+        align-items: center;
+    }
+
+    .file-name {
+        font-weight: 500;
+        margin-bottom: 5px;
+        color: #2d3748;
+    }
+
+    .file-download {
+        color: #667eea;
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+        .file-download:hover {
+            text-decoration: underline;
+        }
+
+    .sent .file-message .file-name {
+        color: #ffffff;
+    }
+
+    .sent .file-message {
+        background: rgba(255, 255, 255, 0.95);
+    }
+
+        .sent .file-message .file-name {
+            color: #2d3748;
+        }
+
+    .sent .file-download {
+        color: #667eea;
+    }
+
+    /* Image Messages */
+    .image-message {
+        max-width: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+
+        .image-message img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            transition: transform 0.2s ease;
+        }
+
+        .image-message:hover img {
+            transform: scale(1.02);
+        }
+
+    /* Image Modal */
+    .image-modal {
+        display: none;
+        position: fixed;
+        z-index: 2000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(102, 126, 234, 0.15);
+        backdrop-filter: blur(15px);
+    }
+
+    .image-modal-content {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    .image-modal-img {
+        max-width: 90%;
+        max-height: 90%;
+        object-fit: contain;
+        border-radius: 12px;
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+        animation: zoomIn 0.3s ease;
+        border: 3px solid #667eea;
+    }
+
+    .image-modal-close {
+        position: absolute;
+        top: 20px;
+        right: 30px;
+        color: #667eea;
+        background: white;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        z-index: 2001;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+        .image-modal-close:hover {
+            background: #667eea;
+            color: white;
+            transform: rotate(90deg);
+        }
+
+    /* Message Input */
+    .message-input-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 40px;
+    }
+
+    .message-input {
+        border: none;
+        outline: none;
+        resize: none;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 15px;
+        line-height: 1.4;
+        padding: 8px 0;
+        background: transparent;
+        width: 100%;
+        max-height: 120px;
+        min-height: 24px;
+        color: #2d3748;
+    }
+
+        .message-input[contenteditable=true]:empty:before {
+            content: attr(placeholder);
+            color: #a0aec0;
+            pointer-events: none;
+        }
+
+    .message-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    /* Emoji Picker */
+    .emoji-picker {
+        position: absolute;
+        bottom: 60px;
+        right: 80px;
+        background: white;
+        border: 2px solid #cbd5e0;
+        border-radius: 12px;
+        padding: 10px;
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+        display: none;
+    }
+
+    .emoji-grid {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 5px;
+    }
+
+    .emoji {
+        padding: 5px;
+        cursor: pointer;
+        border-radius: 6px;
+        text-align: center;
+        font-size: 16px;
+        transition: all 0.2s;
+    }
+
+        .emoji:hover {
+            background: #edf2f7;
+            transform: scale(1.2);
+        }
+
+    /* File Preview */
+    .file-preview {
+        margin-top: 8px;
+        padding: 8px 12px;
+        background: #edf2f7;
+        border-radius: 8px;
+        border: 1px solid #cbd5e0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .file-preview-name {
+        font-size: 14px;
+        color: #2d3748;
+        font-weight: 500;
+    }
+
+    .remove-file {
+        color: #f56565;
+        cursor: pointer;
+        margin-left: 10px;
+        font-weight: bold;
+        font-size: 16px;
+    }
+
+        .remove-file:hover {
+            color: #c53030;
+        }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f7fafc;
+        border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+    }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+
+    /* Members Modal Specific */
+    .members-modal .modal-content {
+        max-width: 400px;
+    }
+
+    .members-list-container {
+        max-height: 400px;
+        overflow-y: auto;
+        background: #f7fafc;
+        border-radius: 12px;
+        padding: 10px;
+    }
+
+    .add-members-modal .modal-content {
+        max-width: 500px;
+    }
+
+    .edit-group-modal .modal-content {
+        max-width: 500px;
+    }
+
+    .edit-group-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .edit-group-image-section {
+        text-align: center;
+    }
+
+    .edit-group-image-container {
+        position: relative;
+        display: inline-block;
+        margin-bottom: 15px;
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    /* Animations */
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @@keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translate(-50%, -40%);
+        }
+
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+        }
+    }
+
+    @@keyframes modalSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-50px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@keyframes zoomIn {
+        from {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @@keyframes pulse {
+        0% {
+            transform: translateY(-50%) scale(1);
+        }
+
+        50% {
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        100% {
+            transform: translateY(-50%) scale(1);
+        }
+    }
+</style>
+
+<div class="dashboard-header">
+    <div class="header-left">
+        <div class="welcome-text">
+            Welcome @Model.FullName !
+        </div>
+    </div>
+
+    <div class="header-right">
+        <button class="profile-btn" onclick="openProfileModal()" title="Edit Profile">
+            @if (!string.IsNullOrEmpty(Model.UserPhotoBase64))
+            {
+                <img src="data:image/jpeg;base64,@Model.UserPhotoBase64" alt="Profile" class="profile-btn-image" />
+            }
+            else
+            {
+                <div class="profile-btn-placeholder">
+                    @Model.FullName[0]
+                </div>
+            }
+        </button>
+        <form asp-action="Logout" method="post">
+            <button type="submit" class="logout-btn">Logout</button>
+        </form>
+    </div>
+</div>
+
+<!-- Profile Modal -->
+<div id="profileModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Profile</h3>
+            <button class="close-btn" onclick="closeProfileModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="profile-image-section">
+                <div class="profile-image-container">
+                    @if (!string.IsNullOrEmpty(Model.UserPhotoBase64))
+                    {
+                        <img id="profileImagePreview" src="data:image/jpeg;base64,@Model.UserPhotoBase64" alt="Profile" class="profile-image-preview" />
+                    }
+                    else
+                    {
+                        <div id="profileImagePreview" class="profile-image-placeholder">
+                            @Model.FullName[0]
+                        </div>
+                    }
+                    <button class="change-photo-btn" onclick="document.getElementById('profileImageInput').click()">
+                        📷
+                    </button>
+                    <input type="file" id="profileImageInput" class="file-input" accept="image/*" onchange="previewProfileImage(this)">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="firstName">First Name</label>
+                <input type="text" id="firstName" class="form-input" value="@Model.FullName.Split(' ')[0]" placeholder="Enter first name">
+                <div id="firstNameError" class="error-message"></div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="lastName">Last Name</label>
+                <input type="text" id="lastName" class="form-input" value="@(Model.FullName.Split(' ').Length > 1 ? Model.FullName.Split(' ')[1] : "")" placeholder="Enter last name">
+                <div id="lastNameError" class="error-message"></div>
+            </div>
+
+            <div id="profileSuccess" class="success-message"></div>
+            <div id="profileError" class="error-message"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="cancel-btn" onclick="closeProfileModal()">Cancel</button>
+            <button class="save-btn" onclick="updateProfile()" id="saveProfileBtn">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Create Group Modal -->
+<div id="createGroupModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Create New Group</h3>
+            <button class="close-btn" onclick="closeCreateGroupModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="profile-image-section">
+                <div class="profile-image-container">
+                    <div id="groupImagePreview" class="group-image-placeholder">
+                        👥
+                    </div>
+                    <button class="change-photo-btn" onclick="document.getElementById('groupImageInput').click()">
+                        📷
+                    </button>
+                    <input type="file" id="groupImageInput" class="file-input" accept="image/*" onchange="previewGroupImage(this)">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="groupName">Group Name</label>
+                <input type="text" id="groupName" class="form-input" placeholder="Enter group name">
+                <div id="groupNameError" class="error-message"></div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Select Members</label>
+                <div class="members-list" id="membersList">
+                    @if (Model.Users != null && Model.Users.Count > 0)
+                    {
+                        foreach (var user in Model.Users)
+                        {
+                            <div class="member-item">
+                                <input type="checkbox" class="member-checkbox" value="@user.Email" id="member_@user.UserId">
+                                @if (!string.IsNullOrEmpty(user.PhotoBase64))
+                                {
+                                    <img src="data:image/jpeg;base64,@user.PhotoBase64" alt="@user.FullName" class="member-photo" />
+                                }
+                                else
+                                {
+                                    <div class="member-default-avatar">
+                                        @user.FirstName[0]@user.LastName[0]
+                                    </div>
+                                }
+                                <label for="member_@user.UserId" class="member-name" style="cursor: pointer;">@user.FirstName @user.LastName</label>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="no-users">No users available</div>
+                    }
+                </div>
+                <div id="membersError" class="error-message"></div>
+            </div>
+
+            <div id="groupSuccess" class="success-message"></div>
+            <div id="groupError" class="error-message"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="cancel-btn" onclick="closeCreateGroupModal()">Cancel</button>
+            <button class="save-btn" onclick="createGroupSubmit()" id="createGroupBtn">Create Group</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Group Modal -->
+<div id="editGroupModal" class="modal edit-group-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Group</h3>
+            <button class="close-btn" onclick="closeEditGroupModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="edit-group-form">
+                <div class="edit-group-image-section">
+                    <div class="edit-group-image-container">
+                        <div id="editGroupImagePreview" class="edit-group-image-placeholder">
+                            👥
+                        </div>
+                        <button class="edit-group-change-photo-btn" onclick="document.getElementById('editGroupImageInput').click()">
+                            📷
+                        </button>
+                        <input type="file" id="editGroupImageInput" class="file-input" accept="image/*" onchange="previewEditGroupImage(this)">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="editGroupName">Group Name</label>
+                    <input type="text" id="editGroupName" class="form-input" placeholder="Enter group name">
+                    <div id="editGroupNameError" class="error-message"></div>
+                </div>
+
+                <div id="editGroupSuccess" class="success-message"></div>
+                <div id="editGroupError" class="error-message"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="cancel-btn" onclick="closeEditGroupModal()">Cancel</button>
+            <button class="save-btn" onclick="updateGroup()" id="updateGroupBtn">Update Group</button>
+        </div>
+    </div>
+</div>
+
+<!-- View Members Modal -->
+<div id="viewMembersModal" class="modal members-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Group Members</h3>
+            <button class="close-btn" onclick="closeViewMembersModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="members-list-container" id="viewMembersList">
+                <!-- Members will be loaded here -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="cancel-btn" onclick="closeViewMembersModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Members Modal -->
+<div id="addMembersModal" class="modal add-members-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add Members to Group</h3>
+            <button class="close-btn" onclick="closeAddMembersModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Available Users</label>
+                <div class="available-members-list" id="availableMembersList">
+                    <!-- Available users will be loaded here -->
+                </div>
+                <div id="addMembersError" class="error-message"></div>
+            </div>
+            <div id="addMembersSuccess" class="success-message"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="cancel-btn" onclick="closeAddMembersModal()">Cancel</button>
+            <button class="save-btn" onclick="addMembersToGroup()" id="addMembersBtn">Add Selected Members</button>
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div id="imageModal" class="image-modal">
+    <span class="image-modal-close" onclick="closeImageModal()">&times;</span>
+    <div class="image-modal-content">
+        <img id="expandedImage" class="image-modal-img" src="" alt="Expanded image">
+    </div>
+</div>
+
+<!-- Video Call Interface -->
+<div id="videoCallInterface" class="video-call-interface">
+    <div class="video-container">
+        <!-- Remote Video (other person) -->
+        <video id="remoteVideo" autoplay playsinline></video>
+
+        <!-- Local Video (yourself) -->
+        <video id="localVideo" autoplay playsinline muted></video>
+
+        <!-- No Video Placeholder -->
+        <div id="remoteNoVideoPlaceholder" class="no-video-placeholder" style="display: block;">
+            <div class="no-video-avatar">
+                <span id="remoteUserInitials">U</span>
+            </div>
+            <div class="no-video-name" id="remoteUserName">User</div>
+            <div class="call-status">Video is off</div>
+        </div>
+
+        <!-- Group Call Participants -->
+        <div id="groupCallParticipants" class="group-call-participants" style="display: none;">
+            <div>Group Call Participants</div>
+            <div id="participantList" class="participant-list">
+                <!-- Participants will be listed here -->
+            </div>
+        </div>
+
+        <!-- Call Timer -->
+        <div id="callTimer" class="call-timer">00:00</div>
+
+        <!-- Call Status -->
+        <div id="callStatus" class="call-status-indicator" style="display: none;">Calling...</div>
+
+        <!-- Video Controls -->
+        <div class="video-controls">
+            <button id="muteAudioBtn" class="control-btn mute-audio" onclick="toggleAudio()">🎤</button>
+            <button id="muteVideoBtn" class="control-btn mute-video" onclick="toggleVideo()">📹</button>
+            <button id="shareScreenBtn" class="control-btn share-screen" onclick="toggleScreenShare()">🖥️</button>
+            <button class="control-btn end-call" onclick="endVideoCall()">📞</button>
+        </div>
+    </div>
+</div>
+
+<!-- Incoming Call Modal -->
+<div id="incomingCallModal" class="incoming-call-modal">
+    <div class="incoming-call-container">
+        <div id="callerAvatarContainer" class="caller-avatar-placeholder">
+            <!-- Avatar will be inserted here -->
+        </div>
+        <div class="caller-name" id="callerName">Caller</div>
+        <div class="call-status">Incoming Video Call...</div>
+        <div class="call-actions">
+            <button class="accept-call-btn" onclick="acceptIncomingCall()">📞</button>
+            <button class="reject-call-btn" onclick="rejectIncomingCall()">📵</button>
+        </div>
+    </div>
+</div>
+
+<!-- Ringtone Audio -->
+<audio id="ringtone" loop>
+    <source src="/sounds/ringtone.mp3" type="audio/mpeg">
+</audio>
+
+<!-- Dashboard Container -->
+<div class="dashboard-container">
+    <!-- User List Section -->
+    <div class="user-list-section">
+        <div class="user-list-header">
+            <div class="user-list-title">CHATS</div>
+            <div class="chat-filter-bar">
+                <button class="filter-btn active" onclick="setFilter('all')">All</button>
+                <button class="filter-btn" onclick="setFilter('person')">Person</button>
+                <button class="filter-btn" onclick="setFilter('group')">Groups</button>
+                <button class="create-group-btn" onclick="openCreateGroupModal()">+ Create Group</button>
+            </div>
+        </div>
+
+        <div class="user-list">
+            <ul id="userList">
+                <!-- Individual Users -->
+                @if (Model.Users != null && Model.Users.Count > 0)
+                {
+                    foreach (var user in Model.Users)
+                    {
+                        <li class="user-item @(Model.SelectedUser?.UserId == user.UserId ? "active" : "")"
+                            data-user-id="@user.UserId"
+                            data-user-name="@user.FirstName @user.LastName"
+                            data-user-photo="@user.PhotoBase64"
+                            data-last-message-time="@user.LastMessageTime.ToString("yyyy-MM-ddTHH:mm:ss")"
+                            data-is-group="false"
+                            onclick="selectUser('@user.UserId', '@user.FirstName @user.LastName', '@user.PhotoBase64')">
+                            @if (!string.IsNullOrEmpty(user.PhotoBase64))
+                            {
+                                <img src="data:image/jpeg;base64,@user.PhotoBase64" alt="@user.FullName" class="user-photo" />
+                            }
+                            else
+                            {
+                                <div class="default-avatar">
+                                    @user.FirstName[0]@user.LastName[0]
+                                </div>
+                            }
+                            <span class="user-name">@user.FirstName @user.LastName</span>
+                        </li>
+                    }
+                }
+
+                <!-- Groups -->
+                @if (Model.Groups != null && Model.Groups.Count > 0)
+                {
+                    foreach (var group in Model.Groups)
+                    {
+                        <li class="user-item @(Model.SelectedGroup?.GroupId == group.GroupId ? "active" : "")"
+                            data-group-id="@group.GroupId"
+                            data-group-name="@group.GroupName"
+                            data-group-photo="@group.GroupImageBase64"
+                            data-last-activity-time="@group.LastActivity.ToString("yyyy-MM-ddTHH:mm:ss")"
+                            data-is-group="true"
+                            onclick="selectGroup('@group.GroupId', '@group.GroupName', '@group.GroupImageBase64')"
+                            style="position: relative;">
+                            @if (!string.IsNullOrEmpty(group.GroupImageBase64))
+                            {
+                                <img src="data:image/jpeg;base64,@group.GroupImageBase64" alt="@group.GroupName" class="user-photo" />
+                            }
+                            else
+                            {
+                                <div class="default-avatar">
+                                    👥
+                                </div>
+                            }
+                            <span class="user-name">@group.GroupName</span>
+                        </li>
+                    }
+                }
+
+                @if ((Model.Users == null || Model.Users.Count == 0) && (Model.Groups == null || Model.Groups.Count == 0))
+                {
+                    <li class="no-users">No chats available</li>
+                }
+            </ul>
+        </div>
+    </div>
+
+    <!-- Chat Section -->
+    <div class="chat-section" id="chatSection">
+        <!-- Chat Header -->
+        <div class="chat-header" id="chatHeader" style="display: none;">
+            <div class="chat-header-user-info">
+                <div id="chatHeaderPhoto" class="chat-header-default-avatar" onclick="handleChatHeaderClick()" style="cursor: pointer;"></div>
+                <div class="chat-header-text">
+                    <h4 class="chat-header-name" id="chatHeaderName" onclick="handleChatHeaderClick()" style="cursor: pointer;">Loading...</h4>
+                </div>
+            </div>
+            <div class="group-management-buttons" id="groupManagementButtons" style="display: none;">
+                <button class="group-management-btn" onclick="openViewMembersModal()" style="background-color:#4299e1">View Members</button>
+                <button class="group-management-btn " style="background-color:#48bb78" onclick="openAddMembersModal()">Add Members</button>
+            </div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chatMessages" style="display: none;"></div>
+
+        <!-- Message Input -->
+        <div class="chat-input-container" id="chatInputContainer" style="display: none;">
+            <!-- Text Editor Toolbar -->
+            <div id="editorToolbar" class="editor-toolbar">
+                <select class="font-family-select" onchange="formatText('fontName', this.value)">
+                    <option value="Arial">Arial</option>
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Georgia">Georgia</option>
+                </select>
+
+                <select class="font-size-select" onchange="formatText('fontSize', this.value)">
+                    <option value="1">Small</option>
+                    <option value="3" selected>Normal</option>
+                    <option value="5">Large</option>
+                    <option value="7">Huge</option>
+                </select>
+
+                <div class="toolbar-separator"></div>
+
+                <button class="toolbar-btn" onclick="formatText('bold')" title="Bold">
+                    <strong>B</strong>
+                </button>
+                <button class="toolbar-btn" onclick="formatText('italic')" title="Italic">
+                    <em>I</em>
+                </button>
+                <button class="toolbar-btn" onclick="formatText('underline')" title="Underline">
+                    <u>U</u>
+                </button>
+                <button class="toolbar-btn" onclick="formatText('strikeThrough')" title="Strikethrough">
+                    <s>S</s>
+                </button>
+
+                <div class="toolbar-separator"></div>
+
+                <div class="color-picker-container">
+                    <input type="color" class="color-picker" id="textColorPicker" onchange="formatText('foreColor', this.value)" title="Text Color" value="#000000">
+                    <input type="color" class="color-picker" id="bgColorPicker" onchange="formatText('hiliteColor', this.value)" title="Background Color" value="#ffffff">
+                </div>
+
+                <div class="toolbar-separator"></div>
+
+                <button class="toolbar-btn" onclick="formatText('removeFormat')" title="Clear Formatting">❌</button>
+            </div>
+
+            <div class="message-bar">
+                <div class="message-actions">
+                    <button class="action-btn" onclick="toggleEmojiPicker()">😊</button>
+                    <button class="action-btn" onclick="document.getElementById('fileInput').click()">📎</button>
+                    <button class="action-btn" onclick="toggleEditor()" id="editorBtn" title="Text formatting">
+                        ✎
+                    </button>
+                    <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelect(this)">
+                </div>
+                <div class="message-input-wrapper">
+                    <div id="messageInput" class="message-input" contenteditable="true" placeholder="Type a message..."></div>
+                    <div id="filePreview" class="file-preview" style="display: none;">
+                        <span id="fileName" class="file-preview-name"></span>
+                        <span class="remove-file" onclick="removeFile()">✕</span>
+                    </div>
+                </div>
+                <div class="message-actions">
+                    <button id="sendBtn" class="send-btn" onclick="sendMessage()">➤</button>
+                </div>
+            </div>
+            <div id="emojiPicker" class="emoji-picker">
+                <div id="emojiGrid" class="emoji-grid"></div>
+            </div>
+        </div>
+
+        <!-- No Chat Selected -->
+        <div class="no-chat-selected" id="noChatSelected">
+            Select a user or group to start chatting
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.js"></script>
+    <script>
+        // ========================================
+        // GLOBAL VARIABLES
+        // ========================================
+        let currentReceiverId = '@(Model.SelectedUser?.UserId ?? Model.SelectedGroup?.GroupId.ToString())';
+        let currentReceiverType = '@(Model.SelectedUser != null ? "user" : (Model.SelectedGroup != null ? "group" : ""))';
+        let selectedFile = null;
+        let isEditorActive = false;
+        let isEmojiPickerActive = false;
+        let shouldAutoScroll = true;
+        let profileImageFile = null;
+        let groupImageFile = null;
+        let currentFilter = 'all';
+        let editGroupImageFile = null;
+        let selectedMembersToAdd = [];
+        let unreadMessages = {};
+        let isFirstLoad = true;
+        let isMarkingAsRead = false;
+        let autoRefreshInterval;
+
+        // Video Call Variables
+        let videoCallConnection = null;
+        let localStream = null;
+        let remoteStream = null;
+        let currentCallId = null;
+        let incomingCallData = null;
+        let callTimer = null;
+        let callStartTime = null;
+        let isAudioMuted = false;
+        let isVideoMuted = false;
+        let isScreenSharing = false;
+        let screenStream = null;
+        let videoCallHub = null;
+
+        // WebRTC Configuration
+        const rtcConfiguration = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' },
+                { urls: 'stun:stun.stunprotocol.org:3478' }
+            ],
+            iceCandidatePoolSize: 10
+        };
+
+        // Common emojis
+        const emojis = ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕'];
+
+        // ========================================
+        // INITIALIZATION
+        // ========================================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== PAGE LOADED ===');
+            initEmojiGrid();
+            setupMessageInput();
+            setupScrollHandling();
+            restoreUserListScroll();
+            loadUserProfile();
+            initializeVideoCallHub();
+
+            // Load unread messages count
+            loadUnreadMessagesCount();
+
+            // Initialize chat if already selected
+            if (currentReceiverId && currentReceiverType) {
+                if (currentReceiverType === 'user') {
+                    const userItem = document.querySelector(`.user-item[data-user-id="${currentReceiverId}"]`);
+                    if (userItem) {
+                        const userName = userItem.getAttribute('data-user-name');
+                        const userPhoto = userItem.getAttribute('data-user-photo');
+                        updateUserChatHeader(userName, userPhoto);
+                    }
+                    initializeUserChat(currentReceiverId);
+                } else if (currentReceiverType === 'group') {
+                    const groupItem = document.querySelector(`.user-item[data-group-id="${currentReceiverId}"]`);
+                    if (groupItem) {
+                        const groupName = groupItem.getAttribute('data-group-name');
+                        const groupPhoto = groupItem.getAttribute('data-group-photo');
+                        updateGroupChatHeader(groupName, groupPhoto);
+                    }
+                    initializeGroupChat(currentReceiverId);
+                }
+            }
+
+            // Apply initial filter
+            filterChats();
+
+            // Sort chat list once on load
+            sortChatList();
+        });
+
+        // ========================================
+        // VIDEO CALLING SYSTEM
+        // ========================================
+
+        function initializeVideoCallHub() {
+            console.log('🔌 Initializing SignalR connection...');
+
+            videoCallHub = new signalR.HubConnectionBuilder()
+                .withUrl('/videoCallHub')
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
+            // Setup event handlers
+            setupSignalRHandlers();
+
+            // Start connection
+            startSignalRConnection();
+        }
+
+        function startSignalRConnection() {
+            videoCallHub.start()
+                .then(() => {
+                    console.log('✅ SignalR connected successfully');
+                })
+                .catch(err => {
+                    console.error('❌ SignalR connection error:', err);
+                    setTimeout(startSignalRConnection, 5000);
+                });
+        }
+
+        function setupSignalRHandlers() {
+            videoCallHub.on('ReceiveCallOffer', handleIncomingCall);
+            videoCallHub.on('CallAccepted', handleCallAccepted);
+            videoCallHub.on('CallRejected', handleCallRejected);
+            videoCallHub.on('CallCancelled', handleCallCancelled);
+            videoCallHub.on('CallEnded', handleCallEnded);
+            videoCallHub.on('ReceiveICECandidate', handleICECandidate);
+            videoCallHub.on('UserMediaStatus', handleMediaStatus);
+            videoCallHub.on('UserOffline', handleUserOffline);
+            videoCallHub.on('UserBusy', handleUserBusy);
+            videoCallHub.on('CallError', handleCallError);
+
+                  // Add group call handlers
+        videoCallHub.on('GroupCallUpdate', handleGroupCallUpdate);
+        videoCallHub.on('GroupCallEnded', handleGroupCallEnded);
+        }
+
+                let groupCallParticipants = new Map();
+
+        async function initiateVideoCall() {
+            try {
+                console.log('📞 Initiating video call to:', currentReceiverId, 'Type:', currentReceiverType);
+
+                if (!currentReceiverId) {
+                    alert('Please select a user or group to call');
+                    return;
+                }
+
+                // Show video interface
+                showVideoInterface();
+                showCallStatus('Starting call...');
+
+                // Get local media stream
+                localStream = await getLocalMediaStream();
+                if (!localStream) {
+                    throw new Error('Failed to get local media');
+                }
+
+                // Display local video
+                const localVideo = document.getElementById('localVideo');
+                if (localVideo) {
+                    localVideo.srcObject = localStream;
+                }
+
+                // Generate unique call ID
+                currentCallId = generateCallId();
+
+                // Get current user info
+                const userName = document.querySelector('.welcome-text')?.textContent?.replace('Welcome ', '')?.replace('!', '') || 'User';
+                const userPhoto = document.querySelector('.profile-btn-image')?.src || '';
+
+                if (currentReceiverType === 'user') {
+                    // Individual call
+                    await initiateIndividualCall(userName, userPhoto);
+                } else if (currentReceiverType === 'group') {
+                    // Group call
+                    await initiateGroupCall(userName, userPhoto);
+                }
+
+            } catch (error) {
+                console.error('❌ Error initiating call:', error);
+                alert('Failed to start call: ' + error.message);
+                cleanupCall();
+            }
+        }
+
+                async function initiateGroupCall(userName, userPhoto) {
+            console.log('📞 Starting group call to group:', currentReceiverId);
+
+            showCallStatus('Starting group call...');
+
+            // First, get group members
+            const groupMembers = await getGroupMembers(currentReceiverId);
+            if (!groupMembers || groupMembers.length === 0) {
+                throw new Error('No members found in this group');
+            }
+
+            console.log(`👥 Found ${groupMembers.length} group members`);
+
+            // Initialize group call participants
+            groupCallParticipants.clear();
+            groupMembers.forEach(member => {
+                if (member.userId !== '@Model.UserId') { // Exclude self
+                    groupCallParticipants.set(member.userId, {
+                        userId: member.userId,
+                        userName: member.fullName,
+                        userPhoto: member.photoBase64,
+                        connection: null,
+                        stream: null,
+                        hasJoined: false
+                    });
+                }
+            });
+
+            console.log(`📞 Calling ${groupCallParticipants.size} participants`);
+
+            // Create peer connection for the group call host
+            createPeerConnection();
+
+            // Add local tracks to connection
+            localStream.getTracks().forEach(track => {
+                console.log('➕ Adding local track:', track.kind);
+                videoCallConnection.addTrack(track, localStream);
+            });
+
+            // Create offer
+            const offer = await videoCallConnection.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true
+            });
+
+            await videoCallConnection.setLocalDescription(offer);
+
+            console.log('📤 Sending group call invitations...');
+
+            // Send group call invitation to all members
+            await videoCallHub.invoke('StartGroupCall', currentReceiverId, {
+                callId: currentCallId,
+                callerName: userName,
+                callerPhoto: userPhoto.includes('base64') ? userPhoto.split(',')[1] : '',
+                groupId: currentReceiverId,
+                groupName: document.getElementById('chatHeaderName')?.textContent || 'Group',
+                offer: {
+                    type: offer.type,
+                    sdp: offer.sdp
+                },
+                participantIds: Array.from(groupCallParticipants.keys())
+            });
+
+            showCallStatus(`Group call started - inviting ${groupCallParticipants.size} participants`);
+        }
+
+        async function getGroupMembers(groupId) {
+            try {
+                const response = await fetch('/UserDashboard/GetGroupMembers?groupId=' + groupId);
+                const data = await response.json();
+
+                if (data.success) {
+                    return data.members;
+                } else {
+                    console.error('Failed to fetch group members:', data.message);
+                    return null;
+                }
+            } catch (error) {
+                console.error('Error fetching group members:', error);
+                return null;
+            }
+        }
+
+                async function initiateIndividualCall(userName, userPhoto) {
+            console.log('📞 Starting individual call to user:', currentReceiverId);
+
+            showCallStatus('Calling...');
+
+            // Create peer connection
+            createPeerConnection();
+
+            // Add local tracks to connection
+            localStream.getTracks().forEach(track => {
+                console.log('➕ Adding local track:', track.kind);
+                videoCallConnection.addTrack(track, localStream);
+            });
+
+            // Create offer
+            const offer = await videoCallConnection.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true
+            });
+
+            await videoCallConnection.setLocalDescription(offer);
+
+            console.log('📤 Sending individual call offer...');
+
+            // Send offer via SignalR
+            await videoCallHub.invoke('SendCallOffer', currentReceiverId, {
+                callId: currentCallId,
+                callerName: userName,
+                callerPhoto: userPhoto.includes('base64') ? userPhoto.split(',')[1] : '',
+                offer: {
+                    type: offer.type,
+                    sdp: offer.sdp
+                },
+                isGroupCall: false
+            });
+        }
+
+                async function handleIncomingCall(callData) {
+            try {
+                console.log('📞 Incoming call from:', callData.callerName, 'Type:', callData.isGroupCall ? 'Group' : 'Individual');
+                incomingCallData = callData;
+
+                if (callData.isGroupCall) {
+                    showIncomingGroupCallModal(callData);
+                } else {
+                    showIncomingCallModal(callData);
+                }
+
+                playRingtone();
+            } catch (error) {
+                console.error('❌ Error handling incoming call:', error);
+            }
+        }
+
+                function showIncomingGroupCallModal(callData) {
+            const modal = document.getElementById('incomingCallModal');
+            const callerName = document.getElementById('callerName');
+            const avatarContainer = document.getElementById('callerAvatarContainer');
+            const callStatus = document.querySelector('.call-status');
+
+            if (callerName) callerName.textContent = callData.groupName || 'Group Call';
+
+            if (callStatus) {
+                callStatus.textContent = `${callData.callerName} is starting a group call`;
+            }
+
+            // Use group avatar or caller avatar
+            if (callData.groupPhoto) {
+                avatarContainer.innerHTML = `<img src="data:image/jpeg;base64,${callData.groupPhoto}" class="caller-avatar" alt="${callData.groupName}">`;
+            } else if (callData.callerPhoto) {
+                avatarContainer.innerHTML = `<img src="data:image/jpeg;base64,${callData.callerPhoto}" class="caller-avatar" alt="${callData.callerName}">`;
+            } else {
+                const initials = (callData.groupName || 'GC').split(' ').map(n => n[0]).join('');
+                avatarContainer.innerHTML = `<div class="caller-avatar-placeholder">${initials}</div>`;
+            }
+
+            modal.style.display = 'block';
+        }
+
+
+
+        function showIncomingCallModal(callData) {
+            const modal = document.getElementById('incomingCallModal');
+            const callerName = document.getElementById('callerName');
+            const avatarContainer = document.getElementById('callerAvatarContainer');
+
+            if (callerName) callerName.textContent = callData.callerName;
+
+            if (callData.callerPhoto) {
+                avatarContainer.innerHTML = `<img src="data:image/jpeg;base64,${callData.callerPhoto}" class="caller-avatar" alt="${callData.callerName}">`;
+            } else {
+                const initials = callData.callerName.split(' ').map(n => n[0]).join('');
+                avatarContainer.innerHTML = `<div class="caller-avatar-placeholder">${initials}</div>`;
+            }
+
+            modal.style.display = 'block';
+        }
+
+               async function acceptIncomingCall() {
+            try {
+                console.log('✅ Accepting call...');
+                stopRingtone();
+                document.getElementById('incomingCallModal').style.display = 'none';
+                showVideoInterface();
+
+                currentCallId = incomingCallData.callId;
+
+                // Get local media
+                localStream = await getLocalMediaStream();
+                if (!localStream) {
+                    throw new Error('Failed to get local media');
+                }
+
+                document.getElementById('localVideo').srcObject = localStream;
+
+                if (incomingCallData.isGroupCall) {
+                    await acceptGroupCall();
+                } else {
+                    await acceptIndividualCall();
+                }
+
+            } catch (error) {
+                console.error('❌ Error accepting call:', error);
+                alert('Failed to accept call: ' + error.message);
+                cleanupCall();
+            }
+        }
+
+                async function acceptGroupCall() {
+            console.log('✅ Accepting group call...');
+
+            createPeerConnection();
+
+            // Add local tracks
+            localStream.getTracks().forEach(track => {
+                videoCallConnection.addTrack(track, localStream);
+            });
+
+            // Set remote description (offer)
+            await videoCallConnection.setRemoteDescription(
+                new RTCSessionDescription(incomingCallData.offer)
+            );
+
+            // Create answer
+            const answer = await videoCallConnection.createAnswer();
+            await videoCallConnection.setLocalDescription(answer);
+
+            // Send group call acceptance
+            await videoCallHub.invoke('AcceptGroupCall', currentCallId, {
+                type: answer.type,
+                sdp: answer.sdp,
+                participantId: '@Model.UserId'
+            });
+
+            console.log('✅ Group call accepted');
+            startCallTimer();
+        }
+
+                function handleGroupCallUpdate(data) {
+            console.log('👥 Group call update:', data);
+
+            switch (data.updateType) {
+                case 'participantJoined':
+                    handleParticipantJoined(data);
+                    break;
+                case 'participantLeft':
+                    handleParticipantLeft(data);
+                    break;
+                case 'callEnded':
+                    handleGroupCallEnded(data);
+                    break;
+            }
+        }
+
+                function handleParticipantJoined(data) {
+            console.log(`✅ ${data.participantName} joined the group call`);
+
+            // Update UI to show participant joined
+            showCallStatus(`${data.participantName} joined the call`);
+
+            // You can add visual indicators for participants
+            updateGroupCallParticipantsUI();
+        }
+
+                function handleParticipantLeft(data) {
+            console.log(`❌ ${data.participantName} left the group call`);
+
+            // Update UI to show participant left
+            showCallStatus(`${data.participantName} left the call`);
+
+            // Update participants UI
+            updateGroupCallParticipantsUI();
+        }
+
+        function handleGroupCallEnded(data) {
+            console.log('📞 Group call ended by host');
+            alert('Group call ended by host');
+            cleanupCall();
+        }
+
+        function updateGroupCallParticipantsUI() {
+            // You can implement a participant list in the video call UI
+            const participantCount = groupCallParticipants.size;
+            const statusElement = document.getElementById('callStatus');
+
+            if (statusElement && participantCount > 0) {
+                statusElement.textContent = `Group call - ${participantCount} participants`;
+            }
+        }
+
+
+                async function acceptIndividualCall() {
+            createPeerConnection();
+
+            // Add local tracks
+            localStream.getTracks().forEach(track => {
+                videoCallConnection.addTrack(track, localStream);
+            });
+
+            // Set remote description (offer)
+            await videoCallConnection.setRemoteDescription(
+                new RTCSessionDescription(incomingCallData.offer)
+            );
+
+            // Create answer
+            const answer = await videoCallConnection.createAnswer();
+            await videoCallConnection.setLocalDescription(answer);
+
+            // Send answer via SignalR
+            await videoCallHub.invoke('AcceptCall', currentCallId, {
+                type: answer.type,
+                sdp: answer.sdp
+            });
+
+            console.log('✅ Individual call accepted, answer sent');
+            startCallTimer();
+        }
+
+        async function rejectIncomingCall() {
+            console.log('❌ Rejecting call');
+            stopRingtone();
+            document.getElementById('incomingCallModal').style.display = 'none';
+
+            if (incomingCallData) {
+                await videoCallHub.invoke('RejectCall', incomingCallData.callId, 'Call declined');
+                incomingCallData = null;
+            }
+        }
+
+        async function handleCallAccepted(data) {
+            try {
+                console.log('✅ Call accepted by receiver');
+                hideCallStatus();
+                showVideoInterface();
+                document.getElementById('localVideo').srcObject = localStream;
+
+                await videoCallConnection.setRemoteDescription(
+                    new RTCSessionDescription(data.answer)
+                );
+
+                console.log('✅ Call connected');
+                startCallTimer();
+
+            } catch (error) {
+                console.error('❌ Error handling call acceptance:', error);
+                cleanupCall();
+            }
+        }
+
+        function createPeerConnection() {
+            console.log('🔗 Creating peer connection...');
+
+            videoCallConnection = new RTCPeerConnection(rtcConfiguration);
+
+            videoCallConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    console.log('🧊 Sending ICE candidate');
+                    videoCallHub.invoke('SendICECandidate', currentCallId, {
+                        candidate: event.candidate.candidate,
+                        sdpMLineIndex: event.candidate.sdpMLineIndex,
+                        sdpMid: event.candidate.sdpMid
+                    });
+                }
+            };
+
+            videoCallConnection.onconnectionstatechange = () => {
+                console.log('📡 Connection state:', videoCallConnection.connectionState);
+
+                if (videoCallConnection.connectionState === 'connected') {
+                    console.log('✅ Peer connection established');
+                    hideCallStatus();
+                } else if (videoCallConnection.connectionState === 'disconnected' ||
+                           videoCallConnection.connectionState === 'failed') {
+                    console.log('❌ Connection lost');
+                    endVideoCall();
+                }
+            };
+
+            videoCallConnection.ontrack = (event) => {
+                console.log('📥 Received remote track:', event.track.kind);
+
+                if (!remoteStream) {
+                    remoteStream = new MediaStream();
+                }
+
+                remoteStream.addTrack(event.track);
+
+                const remoteVideo = document.getElementById('remoteVideo');
+                remoteVideo.srcObject = remoteStream;
+
+                document.getElementById('remoteNoVideoPlaceholder').style.display = 'none';
+            };
+
+            console.log('✅ Peer connection created');
+        }
+
+        async function handleICECandidate(data) {
+            try {
+                if (videoCallConnection && data.candidate) {
+                    console.log('🧊 Received ICE candidate');
+
+                    const candidate = new RTCIceCandidate({
+                        candidate: data.candidate,
+                        sdpMLineIndex: data.sdpMLineIndex,
+                        sdpMid: data.sdpMid
+                    });
+
+                    await videoCallConnection.addIceCandidate(candidate);
+                    console.log('✅ ICE candidate added');
+                }
+            } catch (error) {
+                console.error('❌ Error adding ICE candidate:', error);
+            }
+        }
+
+        async function getLocalMediaStream() {
+            try {
+                console.log('🎥 Requesting local media...');
+
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user'
+                    },
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+
+                console.log('✅ Local media obtained');
+                return stream;
+
+            } catch (error) {
+                console.error('❌ Error getting local media:', error);
+                alert('Cannot access camera/microphone. Please allow permissions.');
+                return null;
+            }
+        }
+
+        function toggleAudio() {
+            if (!localStream) return;
+
+            const audioTrack = localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                isAudioMuted = !isAudioMuted;
+                audioTrack.enabled = !isAudioMuted;
+
+                const btn = document.getElementById('muteAudioBtn');
+                if (btn) {
+                    btn.textContent = isAudioMuted ? '🔇' : '🎤';
+                    btn.classList.toggle('active', isAudioMuted);
+                }
+
+                videoCallHub.invoke('SendMediaStatus', currentCallId, 'audio', !isAudioMuted);
+                console.log('🎤 Audio:', isAudioMuted ? 'Muted' : 'Unmuted');
+            }
+        }
+
+        function toggleVideo() {
+            if (!localStream) return;
+
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                isVideoMuted = !isVideoMuted;
+                videoTrack.enabled = !isVideoMuted;
+
+                const btn = document.getElementById('muteVideoBtn');
+                if (btn) {
+                    btn.textContent = isVideoMuted ? '📷' : '📹';
+                    btn.classList.toggle('active', isVideoMuted);
+                }
+
+                const localVideo = document.getElementById('localVideo');
+                if (localVideo) {
+                    localVideo.style.display = isVideoMuted ? 'none' : 'block';
+                }
+
+                videoCallHub.invoke('SendMediaStatus', currentCallId, 'video', !isVideoMuted);
+                console.log('📹 Video:', isVideoMuted ? 'Off' : 'On');
+            }
+        }
+
+        async function toggleScreenShare() {
+            try {
+                if (!isScreenSharing) {
+                    console.log('🖥️ Starting screen share...');
+
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: {
+                            cursor: 'always'
+                        },
+                        audio: false
+                    });
+
+                    const screenTrack = screenStream.getVideoTracks()[0];
+                    const sender = videoCallConnection.getSenders().find(s =>
+                        s.track && s.track.kind === 'video'
+                    );
+
+                    if (sender) {
+                        await sender.replaceTrack(screenTrack);
+                    }
+
+                    document.getElementById('localVideo').srcObject = screenStream;
+
+                    screenTrack.onended = () => {
+                        stopScreenShare();
+                    };
+
+                    isScreenSharing = true;
+
+                    const btn = document.getElementById('shareScreenBtn');
+                    if (btn) {
+                        btn.classList.add('active');
+                        btn.textContent = '⬛';
+                    }
+
+                    console.log('✅ Screen sharing started');
+
+                } else {
+                    stopScreenShare();
+                }
+            } catch (error) {
+                console.error('❌ Error toggling screen share:', error);
+                alert('Failed to share screen');
+            }
+        }
+
+        async function stopScreenShare() {
+            if (!screenStream) return;
+
+            console.log('🖥️ Stopping screen share...');
+
+            screenStream.getTracks().forEach(track => track.stop());
+
+            const videoTrack = localStream.getVideoTracks()[0];
+            const sender = videoCallConnection.getSenders().find(s =>
+                s.track && s.track.kind === 'video'
+            );
+
+            if (sender) {
+                await sender.replaceTrack(videoTrack);
+            }
+
+            document.getElementById('localVideo').srcObject = localStream;
+
+            screenStream = null;
+            isScreenSharing = false;
+
+            const btn = document.getElementById('shareScreenBtn');
+            if (btn) {
+                btn.classList.remove('active');
+                btn.textContent = '🖥️';
+            }
+
+            console.log('✅ Screen sharing stopped');
+        }
+
+        function handleMediaStatus(data) {
+            console.log('📡 Remote media status:', data.mediaType, data.enabled);
+
+            if (data.mediaType === 'video') {
+                const placeholder = document.getElementById('remoteNoVideoPlaceholder');
+                if (placeholder) {
+                    placeholder.style.display = data.enabled ? 'none' : 'block';
+                }
+            }
+        }
+
+                async function endVideoCall() {
+            try {
+                console.log('📞 Ending call...');
+
+                if (currentCallId) {
+                    if (currentReceiverType === 'group') {
+                        // End group call
+                        await videoCallHub.invoke('EndGroupCall', currentCallId, currentReceiverId);
+                    } else {
+                        // End individual call
+                        await videoCallHub.invoke('EndCall', currentCallId);
+                    }
+                }
+
+                cleanupCall();
+
+            } catch (error) {
+                console.error('❌ Error ending call:', error);
+                cleanupCall();
+            }
+        }
+
+        // Update the cleanup function
+        function cleanupCall() {
+            console.log('🧹 Cleaning up call...');
+
+            stopCallTimer();
+
+            if (videoCallConnection) {
+                videoCallConnection.close();
+                videoCallConnection = null;
+            }
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    track.stop();
+                    console.log('🛑 Stopped track:', track.kind);
+                });
+                localStream = null;
+            }
+
+            if (screenStream) {
+                screenStream.getTracks().forEach(track => track.stop());
+                screenStream = null;
+            }
+
+            remoteStream = null;
+            currentCallId = null;
+            isAudioMuted = false;
+            isVideoMuted = false;
+            isScreenSharing = false;
+
+            // Clear group call participants
+            groupCallParticipants.clear();
+
+            hideVideoInterface();
+
+            const remoteVideo = document.getElementById('remoteVideo');
+            const localVideo = document.getElementById('localVideo');
+            if (remoteVideo) remoteVideo.srcObject = null;
+            if (localVideo) localVideo.srcObject = null;
+
+            console.log('✅ Cleanup complete');
+        }
+
+
+        function handleCallRejected(data) {
+            console.log('❌ Call rejected');
+            alert('Call was declined');
+            cleanupCall();
+        }
+
+        function handleCallCancelled(data) {
+            console.log('❌ Call cancelled');
+            stopRingtone();
+            document.getElementById('incomingCallModal').style.display = 'none';
+            incomingCallData = null;
+        }
+
+        function handleCallEnded(data) {
+            console.log('📞 Call ended by other user');
+            alert('Call ended');
+            cleanupCall();
+        }
+
+        function handleUserOffline(userId) {
+            alert('User is offline');
+            cleanupCall();
+        }
+
+        function handleUserBusy(userId) {
+            alert('User is busy on another call');
+            cleanupCall();
+        }
+
+        function handleCallError(message) {
+            console.error('❌ Call error:', message);
+            alert('Call error: ' + message);
+            cleanupCall();
+        }
+
+        function showVideoInterface() {
+            const videoInterface = document.getElementById('videoCallInterface');
+            if (videoInterface) videoInterface.style.display = 'block';
+        }
+
+        function hideVideoInterface() {
+            const videoInterface = document.getElementById('videoCallInterface');
+            if (videoInterface) videoInterface.style.display = 'none';
+        }
+
+        function showCallStatus(message) {
+            const status = document.getElementById('callStatus');
+            if (status) {
+                status.textContent = message;
+                status.style.display = 'block';
+            }
+        }
+
+        function hideCallStatus() {
+            const status = document.getElementById('callStatus');
+            if (status) status.style.display = 'none';
+        }
+
+        function startCallTimer() {
+            callStartTime = Date.now();
+            callTimer = setInterval(updateCallTimer, 1000);
+        }
+
+        function updateCallTimer() {
+            if (!callStartTime) return;
+
+            const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+
+            const timerElement = document.getElementById('callTimer');
+            if (timerElement) {
+                timerElement.textContent =
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        function stopCallTimer() {
+            if (callTimer) {
+                clearInterval(callTimer);
+                callTimer = null;
+            }
+            callStartTime = null;
+        }
+
+        function playRingtone() {
+            const ringtone = document.getElementById('ringtone');
+            if (ringtone) {
+                ringtone.play().catch(e => console.log('Cannot play ringtone:', e));
+            }
+        }
+
+        function stopRingtone() {
+            const ringtone = document.getElementById('ringtone');
+            if (ringtone) {
+                ringtone.pause();
+                ringtone.currentTime = 0;
+            }
+        }
+
+        function generateCallId() {
+            return 'call_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+                function showGroupCallParticipants() {
+            const participantsElement = document.getElementById('groupCallParticipants');
+            if (participantsElement) {
+                participantsElement.style.display = 'block';
+            }
+        }
+
+        function hideGroupCallParticipants() {
+            const participantsElement = document.getElementById('groupCallParticipants');
+            if (participantsElement) {
+                participantsElement.style.display = 'none';
+            }
+        }
+
+        function updateGroupCallParticipantsUI() {
+            const participantList = document.getElementById('participantList');
+            if (!participantList) return;
+
+            participantList.innerHTML = '';
+
+            groupCallParticipants.forEach((participant, userId) => {
+                const participantItem = document.createElement('div');
+                participantItem.className = 'participant-item';
+
+                const statusClass = participant.hasJoined ? 'connected' : 'pending';
+
+                participantItem.innerHTML = `
+                    <div class="participant-status ${statusClass}"></div>
+                    <span>${participant.userName}</span>
+                `;
+
+                participantList.appendChild(participantItem);
+            });
+
+            // Show/hide participants list based on call type
+            if (currentReceiverType === 'group' && groupCallParticipants.size > 0) {
+                showGroupCallParticipants();
+            } else {
+                hideGroupCallParticipants();
+            }
+        }
+
+        // ========================================
+        // CHAT FUNCTIONALITY
+        // ========================================
+
+        function selectUser(userId, userName, userPhotoBase64) {
+            console.log('Selecting user:', userId);
+            saveUserListScroll();
+            stopAutoRefresh();
+
+            document.querySelectorAll('.user-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            updateUserChatHeader(userName, userPhotoBase64);
+            initializeUserChat(userId);
+            addVideoCallButton();
+        }
+
+        function selectGroup(groupId, groupName, groupPhotoBase64) {
+            console.log('Selecting group:', groupId);
+            saveUserListScroll();
+            stopAutoRefresh();
+
+            document.querySelectorAll('.user-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            updateGroupChatHeader(groupName, groupPhotoBase64);
+            initializeGroupChat(groupId);
+        }
+
+               function addVideoCallButton() {
+            const chatHeader = document.getElementById('chatHeader');
+            if (!chatHeader) return;
+
+            const existingBtn = document.getElementById('videoCallBtn');
+            if (existingBtn) existingBtn.remove();
+
+            if (currentReceiverId) {
+                const videoCallBtn = document.createElement('button');
+                videoCallBtn.id = 'videoCallBtn';
+                videoCallBtn.className = 'video-call-btn';
+
+                if (currentReceiverType === 'user') {
+                    videoCallBtn.innerHTML = '📹 Video Call';
+                } else {
+                    videoCallBtn.innerHTML = '👥 Group Video Call';
+                }
+
+                videoCallBtn.onclick = initiateVideoCall;
+
+                chatHeader.appendChild(videoCallBtn);
+            }
+        }
+
+        function initializeUserChat(userId) {
+            console.log('Initializing user chat:', userId);
+
+            currentReceiverId = userId;
+            currentReceiverType = 'user';
+
+            // Show chat interface
+            document.getElementById('noChatSelected').style.display = 'none';
+            document.getElementById('chatHeader').style.display = 'flex';
+            document.getElementById('chatMessages').style.display = 'block';
+            document.getElementById('chatInputContainer').style.display = 'block';
+            document.getElementById('groupManagementButtons').style.display = 'none';
+
+            // Update active state in UI
+            document.querySelectorAll('.user-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            const currentUserItem = document.querySelector(`.user-item[data-user-id="${userId}"]`);
+            if (currentUserItem) {
+                currentUserItem.classList.add('active');
+            }
+
+            // Mark messages as read and wait for completion
+            markMessagesAsRead().then(success => {
+                if (success) {
+                    console.log('Successfully marked user messages as read');
+                } else {
+                    console.log('Failed to mark user messages as read');
+                }
+
+                // Load messages regardless of mark status
+                loadMessages();
+
+                // Start auto-refresh
+                startAutoRefresh();
+            });
+        }
+
+        function initializeGroupChat(groupId) {
+            console.log('Initializing group chat:', groupId);
+
+            currentReceiverId = groupId;
+            currentReceiverType = 'group';
+
+            // Show chat interface
+            document.getElementById('noChatSelected').style.display = 'none';
+            document.getElementById('chatHeader').style.display = 'flex';
+            document.getElementById('chatMessages').style.display = 'block';
+            document.getElementById('chatInputContainer').style.display = 'block';
+            document.getElementById('groupManagementButtons').style.display = 'flex';
+
+            // Update active state in UI
+            document.querySelectorAll('.user-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            const currentGroupItem = document.querySelector(`.user-item[data-group-id="${groupId}"]`);
+            if (currentGroupItem) {
+                currentGroupItem.classList.add('active');
+
+                // Remove dot immediately from UI
+                const dot = currentGroupItem.querySelector('.unread-dot');
+                if (dot) {
+                    dot.remove();
+                    console.log('Removed dot from active group chat');
+                }
+            }
+
+            // Mark messages as read and wait for completion
+            markMessagesAsRead().then(success => {
+                if (success) {
+                    console.log('Successfully marked group messages as read');
+                } else {
+                    console.log('Failed to mark group messages as read');
+                }
+
+                // Load messages regardless of mark status
+                loadMessages();
+
+                // Start auto-refresh
+                startAutoRefresh();
+            });
+        }
+
+        function updateUserChatHeader(userName, userPhotoBase64) {
+            document.getElementById('chatHeaderName').textContent = userName;
+
+            const chatHeaderPhoto = document.getElementById('chatHeaderPhoto');
+            if (userPhotoBase64 && userPhotoBase64 !== '') {
+                // Create image element
+                chatHeaderPhoto.className = 'chat-header-photo';
+                chatHeaderPhoto.innerHTML = '';
+                const img = document.createElement('img');
+                img.src = 'data:image/jpeg;base64,' + userPhotoBase64;
+                img.alt = userName;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.borderRadius = '50%';
+                img.style.objectFit = 'cover';
+                chatHeaderPhoto.appendChild(img);
+            } else {
+                // Use default avatar
+                chatHeaderPhoto.className = 'chat-header-default-avatar';
+                chatHeaderPhoto.innerHTML = '';
+                chatHeaderPhoto.textContent = userName.split(' ').map(n => n[0]).join('');
+            }
+        }
+
+        function updateGroupChatHeader(groupName, groupPhotoBase64) {
+            document.getElementById('chatHeaderName').textContent = groupName;
+
+            const chatHeaderPhoto = document.getElementById('chatHeaderPhoto');
+            if (groupPhotoBase64 && groupPhotoBase64 !== '') {
+                // Create image element
+                chatHeaderPhoto.className = 'chat-header-photo';
+                chatHeaderPhoto.innerHTML = '';
+                const img = document.createElement('img');
+                img.src = 'data:image/jpeg;base64,' + groupPhotoBase64;
+                img.alt = groupName;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.borderRadius = '50%';
+                img.style.objectFit = 'cover';
+                chatHeaderPhoto.appendChild(img);
+            } else {
+                // Use group avatar
+                chatHeaderPhoto.className = 'chat-header-default-avatar';
+                chatHeaderPhoto.innerHTML = '';
+                chatHeaderPhoto.textContent = '👥';
+            }
+        }
+
+        function loadMessages() {
+            if (!currentReceiverId) return;
+
+            const url = currentReceiverType === 'user'
+                ? '/UserDashboard/GetMessages?otherUserId=' + currentReceiverId
+                : '/UserDashboard/GetGroupMessages?groupId=' + currentReceiverId;
+
+            fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateChatMessages(data.messages);
+                }
+            })
+            .catch(error => console.error('Error loading messages:', error));
+        }
+
+        function updateChatMessages(messages) {
+            const chatMessages = document.getElementById('chatMessages');
+            if (!chatMessages) return;
+
+            chatMessages.innerHTML = '';
+
+            if (messages.length === 0) {
+                chatMessages.innerHTML = '<div class="no-messages">No messages yet. Start a conversation!</div>';
+                return;
+            }
+
+            let currentDate = '';
+            messages.forEach(message => {
+                const messageDate = new Date(message.sentAt).toDateString();
+
+                if (messageDate !== currentDate) {
+                    currentDate = messageDate;
+                    const today = new Date().toDateString();
+                    const yesterday = new Date(Date.now() - 86400000).toDateString();
+
+                    let dateText = '';
+                    if (messageDate === today) {
+                        dateText = 'Today';
+                    } else if (messageDate === yesterday) {
+                        dateText = 'Yesterday';
+                    } else {
+                        dateText = new Date(message.sentAt).toLocaleDateString('en-US', {
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric'
+                        });
+                    }
+
+                    const dateDiv = document.createElement('div');
+                    dateDiv.className = 'date-divider';
+                    dateDiv.innerHTML = `<span class="date-divider-text">${dateText}</span>`;
+                    chatMessages.appendChild(dateDiv);
+                }
+
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${message.isCurrentUserSender ? 'sent' : 'received'}`;
+
+                const time = new Date(message.sentAt).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                });
+
+                // Determine sender name for group messages
+                let senderName = '';
+                let showSenderName = false;
+
+                if (currentReceiverType === 'group') {
+                    if (message.isCurrentUserSender) {
+                        senderName = 'You';
+                        showSenderName = true;
+                    } else {
+                        senderName = message.senderName || 'Unknown User';
+                        showSenderName = true;
+                    }
+                }
+
+                let messageContent = '';
+                if (message.hasFile) {
+                    if (message.isImage) {
+                        messageContent = `
+                            <div class="image-message" onclick="openImageModal('${message.imagePath}')">
+                                <img src="${message.imagePath}" alt="Shared image" />
+                            </div>
+                        `;
+                    } else {
+                        messageContent = `
+                            <div class="file-message">
+                                <div class="file-info">
+                                    <div class="file-icon"></div>
+                                    <div>
+                                        <div class="file-name">${message.fileOriginalName}</div>
+                                        <a href="${message.filePath}" class="file-download" download="${message.fileOriginalName}">Download</a>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    messageContent = `<div class="rich-text-message">${message.messageText}</div>`;
+                }
+
+                // Build message HTML with sender name for group messages
+                let messageHTML = `
+                    <div class="message-bubble">
+                `;
+
+                // Add sender name for ALL messages in groups (both sent and received)
+                if (currentReceiverType === 'group' && showSenderName && senderName) {
+                    const senderClass = message.isCurrentUserSender ? 'sent-sender' : 'received-sender';
+                    messageHTML += `<div class="message-sender ${senderClass}">${senderName}</div>`;
+                }
+
+                messageHTML += `
+                        ${messageContent}
+                        <div class="message-time">${time}</div>
+                    </div>
+                `;
+
+                messageDiv.innerHTML = messageHTML;
+                chatMessages.appendChild(messageDiv);
+            });
+
+            // Scroll to bottom
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 0);
+        }
+
+        function sendMessage() {
+            if (selectedFile) {
+                sendFile();
+            } else {
+                sendTextMessage();
+            }
+        }
+
+        function sendTextMessage() {
+            const messageInput = document.getElementById('messageInput');
+            if (!messageInput) return;
+
+            let messageText = messageInput.innerHTML.trim();
+
+            // Ignore empty messages
+            if (!messageText || messageText === '<br>' || messageText === '<div><br></div>') {
+                return;
+            }
+
+            if (!currentReceiverId) return;
+
+            const sendBtn = document.getElementById('sendBtn');
+            if (sendBtn) sendBtn.disabled = true;
+
+            const url = currentReceiverType === 'user'
+                ? '/UserDashboard/SendMessage'
+                : '/UserDashboard/SendGroupMessage';
+
+            const body = currentReceiverType === 'user'
+                ? `receiverId=${currentReceiverId}&messageText=${encodeURIComponent(messageText)}`
+                : `groupId=${currentReceiverId}&messageText=${encodeURIComponent(messageText)}`;
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reset input
+                    messageInput.innerHTML = '';
+                    resetInputHeight();
+
+                    // Move chat to top INSTANTLY without any backend delay
+                    moveChatToTop(currentReceiverId, currentReceiverType);
+
+                    // Scroll to bottom
+                    shouldAutoScroll = true;
+
+                    // Load messages to show the new message
+                    loadMessages();
+                } else {
+                    alert('Failed to send message: ' + data.message);
+                }
+                if (sendBtn) sendBtn.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (sendBtn) sendBtn.disabled = false;
+            });
+        }
+
+        function sendFile() {
+            if (!selectedFile || !currentReceiverId) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            if (currentReceiverType === 'user') {
+                formData.append('receiverId', currentReceiverId);
+            } else {
+                formData.append('groupId', currentReceiverId);
+            }
+
+            const sendBtn = document.getElementById('sendBtn');
+            if (sendBtn) sendBtn.disabled = true;
+
+            const url = currentReceiverType === 'user'
+                ? '/UserDashboard/SendFile'
+                : '/UserDashboard/SendGroupFile';
+
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    removeFile();
+
+                    // Move chat to top INSTANTLY
+                    moveChatToTop(currentReceiverId, currentReceiverType);
+
+                    shouldAutoScroll = true;
+
+                    // Load messages to show the new file
+                    loadMessages();
+                } else {
+                    alert('Failed to send file: ' + data.message);
+                }
+                if (sendBtn) sendBtn.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (sendBtn) sendBtn.disabled = false;
+            });
+        }
+
+        function moveChatToTop(chatId, chatType) {
+            const userList = document.getElementById('userList');
+            if (!userList) return;
+
+            const selector = chatType === 'user'
+                ? `.user-item[data-user-id="${chatId}"]`
+                : `.user-item[data-group-id="${chatId}"]`;
+
+            const chatItem = userList.querySelector(selector);
+
+            if (chatItem) {
+                // Update timestamp to current time for proper sorting
+                const currentTime = new Date().toISOString();
+                if (chatType === 'user') {
+                    chatItem.setAttribute('data-last-message-time', currentTime);
+                } else {
+                    chatItem.setAttribute('data-last-activity-time', currentTime);
+                }
+
+                // Move to top instantly
+                userList.insertBefore(chatItem, userList.firstChild);
+            }
+        }
+
+        // ========================================
+        // MESSAGE INPUT & EDITOR FUNCTIONS
+        // ========================================
+
+        function setupMessageInput() {
+            const messageInput = document.getElementById('messageInput');
+            if (!messageInput) return;
+
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            messageInput.addEventListener('input', resetInputHeight);
+        }
+
+        function resetInputHeight() {
+            const messageInput = document.getElementById('messageInput');
+            if (!messageInput) return;
+
+            messageInput.style.height = 'auto';
+            messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+        }
+
+        function toggleEditor() {
+            const editorToolbar = document.getElementById('editorToolbar');
+            const editorBtn = document.getElementById('editorBtn');
+
+            isEditorActive = !isEditorActive;
+            if (editorToolbar) editorToolbar.classList.toggle('active', isEditorActive);
+            if (editorBtn) editorBtn.classList.toggle('active', isEditorActive);
+
+            // Close emoji picker if open
+            if (isEmojiPickerActive) {
+                toggleEmojiPicker(false);
+            }
+
+            // Focus on the input when opening editor
+            if (isEditorActive) {
+                const messageInput = document.getElementById('messageInput');
+                if (messageInput) messageInput.focus();
+            }
+        }
+
+        function formatText(command, value = null) {
+            const messageInput = document.getElementById('messageInput');
+            if (!messageInput) return;
+
+            // Focus on the input first
+            messageInput.focus();
+
+            try {
+                // Enable CSS styling
+                document.execCommand('styleWithCSS', false, true);
+
+                if (value) {
+                    document.execCommand(command, false, value);
+                } else {
+                    document.execCommand(command, false, null);
+                }
+            } catch (e) {
+                console.error('Error executing command:', e);
+            }
+        }
+
+        function toggleEmojiPicker(forceClose = false) {
+            const emojiPicker = document.getElementById('emojiPicker');
+
+            if (forceClose || isEmojiPickerActive) {
+                if (emojiPicker) emojiPicker.style.display = 'none';
+                isEmojiPickerActive = false;
+            } else {
+                if (emojiPicker) {
+                    emojiPicker.style.display = 'block';
+                    isEmojiPickerActive = true;
+                }
+            }
+        }
+
+        function insertEmoji(emoji) {
+            const messageInput = document.getElementById('messageInput');
+            if (!messageInput) return;
+
+            messageInput.focus();
+            document.execCommand('insertText', false, emoji);
+            toggleEmojiPicker(true);
+        }
+
+        function initEmojiGrid() {
+            const emojiGrid = document.getElementById('emojiGrid');
+            if (!emojiGrid) return;
+
+            emojiGrid.innerHTML = '';
+            emojis.forEach(emoji => {
+                const emojiElement = document.createElement('div');
+                emojiElement.className = 'emoji';
+                emojiElement.textContent = emoji;
+                emojiElement.onclick = () => insertEmoji(emoji);
+                emojiGrid.appendChild(emojiElement);
+            });
+        }
+
+        function handleFileSelect(input) {
+            if (input.files.length > 0) {
+                selectedFile = input.files[0];
+                const fileName = document.getElementById('fileName');
+                const filePreview = document.getElementById('filePreview');
+                if (fileName) fileName.textContent = selectedFile.name;
+                if (filePreview) filePreview.style.display = 'block';
+            }
+        }
+
+        function removeFile() {
+            selectedFile = null;
+            const fileInput = document.getElementById('fileInput');
+            const filePreview = document.getElementById('filePreview');
+            if (fileInput) fileInput.value = '';
+            if (filePreview) filePreview.style.display = 'none';
+        }
+
+        // ========================================
+        // UNREAD MESSAGES MANAGEMENT
+        // ========================================
+
+        function loadUnreadMessagesCount() {
+            console.log('Loading unread messages count...');
+
+            return fetch('/UserDashboard/GetUnreadMessagesCount')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Unread counts received:', data.unreadMessages);
+
+                    // Create a new object to avoid reference issues
+                    const newUnreadMessages = {};
+                    Object.keys(data.unreadMessages).forEach(chatId => {
+                        newUnreadMessages[chatId] = data.unreadMessages[chatId];
+                    });
+
+                    // Update the global variable
+                    unreadMessages = newUnreadMessages;
+
+                    updateUnreadDots();
+                    return true;
+                } else {
+                    console.error('Failed to load unread counts');
+                    return false;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading unread messages count:', error);
+                return false;
+            });
+        }
+
+        function updateUnreadDots() {
+            console.log('=== UPDATING UNREAD DOTS ===');
+            console.log('Current unreadMessages:', unreadMessages);
+
+            // Remove existing dots
+            document.querySelectorAll('.unread-dot').forEach(dot => {
+                dot.remove();
+            });
+
+            // Add dots for chats with unread messages
+            Object.keys(unreadMessages).forEach(chatId => {
+                const count = unreadMessages[chatId];
+
+                if (count > 0) {
+                    console.log(`Processing chat ${chatId} with ${count} unread messages`);
+
+                    let userItem = null;
+                    let isGroup = false;
+
+                    // First, check if this is a GROUP
+                    userItem = document.querySelector(`.user-item[data-group-id="${chatId}"]`);
+                    if (userItem) {
+                        isGroup = true;
+                        console.log(`✓ Found GROUP item for ID ${chatId}:`, userItem);
+                    }
+                    // If not a group, check if it's a USER
+                    else {
+                        userItem = document.querySelector(`.user-item[data-user-id="${chatId}"]`);
+                        if (userItem) {
+                            isGroup = false;
+                            console.log(`✓ Found USER item for ID ${chatId}:`, userItem);
+                        }
+                    }
+
+                    if (userItem) {
+                        const isActive = userItem.classList.contains('active');
+                        console.log(`Chat ${chatId} (${isGroup ? 'GROUP' : 'USER'}) - Item found, is active: ${isActive}`);
+
+                        if (!isActive) {
+                            // Add new dot
+                            const dot = document.createElement('div');
+                            dot.className = 'unread-dot';
+                            dot.title = `${count} unread message${count > 1 ? 's' : ''}`;
+
+                            // Ensure user item has relative positioning
+                            userItem.style.position = 'relative';
+
+                            userItem.appendChild(dot);
+                            console.log(`✓ Added dot for ${isGroup ? 'GROUP' : 'USER'} chat: ${chatId}, count: ${count}`);
+                        } else {
+                            console.log(`✗ Skipping dot for active chat: ${chatId}`);
+                        }
+                    } else {
+                        console.log(`✗ No user/group item found for chat ID: ${chatId}`);
+                    }
+                }
+            });
+
+            // Debug: Count how many dots are actually in the DOM
+            const dotCount = document.querySelectorAll('.unread-dot').length;
+            console.log(`Total dots in DOM after update: ${dotCount}`);
+        }
+
+        function markMessagesAsRead() {
+            if (!currentReceiverId || isMarkingAsRead) {
+                console.log('Skipping mark as read - no receiver or already marking');
+                return Promise.resolve(false);
+            }
+
+            isMarkingAsRead = true;
+            console.log('Marking messages as read for:', currentReceiverId, 'Type:', currentReceiverType);
+
+            const url = currentReceiverType === 'user'
+                ? '/UserDashboard/MarkMessagesAsRead?otherUserId=' + currentReceiverId
+                : '/UserDashboard/MarkGroupMessagesAsRead?groupId=' + currentReceiverId;
+
+            console.log('Calling URL:', url);
+
+            return fetch(url, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Mark as read response:', data);
+
+                if (data.success) {
+                    // Use the updated unread counts from the response
+                    if (data.unreadMessages) {
+                        unreadMessages = data.unreadMessages;
+                        console.log('Updated unreadMessages from response:', unreadMessages);
+                    } else {
+                        // Fallback: remove only the current chat
+                        delete unreadMessages[currentReceiverId];
+                        console.log('Removed current chat from unreadMessages:', currentReceiverId);
+                    }
+
+                    updateUnreadDots();
+
+                    // Force refresh to ensure consistency
+                    setTimeout(() => {
+                        loadUnreadMessagesCount();
+                    }, 100);
+                } else {
+                    console.log('Failed to mark messages as read');
+                }
+
+                isMarkingAsRead = false;
+                return data.success;
+            })
+            .catch(error => {
+                console.error('Error marking messages as read:', error);
+                isMarkingAsRead = false;
+                return false;
+            });
+        }
+
+        // ========================================
+        // AUTO-REFRESH SYSTEM
+        // ========================================
+
+        function startAutoRefresh() {
+            // Clear any existing interval
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+
+            // Start new interval
+            autoRefreshInterval = setInterval(function() {
+                // Only load messages if we have an active chat
+                if (currentReceiverId && currentReceiverType) {
+                    loadMessages();
+                }
+
+                // Update unread counts for ALL chats
+                loadUnreadMessagesCount();
+            }, 3000); // Check every 3 seconds
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+
+        // ========================================
+        // PROFILE MANAGEMENT
+        // ========================================
+
+        function openProfileModal() {
+            const modal = document.getElementById('profileModal');
+            modal.style.display = 'block';
+            loadUserProfile();
+        }
+
+        function closeProfileModal() {
+            const modal = document.getElementById('profileModal');
+            modal.style.display = 'none';
+            resetProfileForm();
+        }
+
+        function loadUserProfile() {
+            fetch('/UserDashboard/GetCurrentUserProfile')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('firstName').value = data.firstName;
+                        document.getElementById('lastName').value = data.lastName;
+
+                        const profileImagePreview = document.getElementById('profileImagePreview');
+                        if (data.photoBase64) {
+                            profileImagePreview.className = 'profile-image-preview';
+                            profileImagePreview.src = 'data:image/jpeg;base64,' + data.photoBase64;
+                            profileImagePreview.alt = data.firstName + ' ' + data.lastName;
+                        } else {
+                            profileImagePreview.className = 'profile-image-placeholder';
+                            profileImagePreview.textContent = data.firstName[0] + data.lastName[0];
+                            profileImagePreview.src = '';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading profile:', error);
+                });
+        }
+
+        function previewProfileImage(input) {
+            if (input.files && input.files[0]) {
+                profileImageFile = input.files[0];
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    const profileImagePreview = document.getElementById('profileImagePreview');
+                    profileImagePreview.className = 'profile-image-preview';
+                    profileImagePreview.src = e.target.result;
+                    profileImagePreview.alt = 'Profile Preview';
+                }
+
+                reader.readAsDataURL(profileImageFile);
+            }
+        }
+
+        function updateProfile() {
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const saveBtn = document.getElementById('saveProfileBtn');
+
+            // Validate inputs
+            let isValid = true;
+
+            if (!firstName) {
+                document.getElementById('firstNameError').textContent = 'First name is required';
+                document.getElementById('firstNameError').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('firstNameError').style.display = 'none';
+            }
+
+            if (!lastName) {
+                document.getElementById('lastNameError').textContent = 'Last name is required';
+                document.getElementById('lastNameError').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('lastNameError').style.display = 'none';
+            }
+
+            if (!isValid) return;
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            const formData = new FormData();
+            formData.append('UserId', '@Model.UserId');
+            formData.append('FirstName', firstName);
+            formData.append('LastName', lastName);
+
+            if (profileImageFile) {
+                formData.append('ProfileImage', profileImageFile);
+            }
+
+            fetch('/UserDashboard/UpdateProfile', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('profileSuccess').textContent = data.message;
+                    document.getElementById('profileSuccess').style.display = 'block';
+                    document.getElementById('profileError').style.display = 'none';
+
+                    // Update welcome text
+                    document.querySelector('.welcome-text').textContent = 'Welcome ' + firstName + ' ' + lastName + '!';
+
+                    // Update profile button image
+                    const profileBtn = document.querySelector('.profile-btn');
+                    if (profileImageFile) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const img = profileBtn.querySelector('img') || document.createElement('img');
+                            img.className = 'profile-btn-image';
+                            img.src = e.target.result;
+                            img.alt = 'Profile';
+
+                            // Remove placeholder if exists
+                            const placeholder = profileBtn.querySelector('.profile-btn-placeholder');
+                            if (placeholder) {
+                                profileBtn.removeChild(placeholder);
+                            }
+
+                            // Add image if not already there
+                            if (!profileBtn.querySelector('img')) {
+                                profileBtn.appendChild(img);
+                            }
+                        };
+                        reader.readAsDataURL(profileImageFile);
+                    }
+
+                    // Close modal after 2 seconds
+                    setTimeout(() => {
+                        closeProfileModal();
+                    }, 2000);
+                } else {
+                    document.getElementById('profileError').textContent = data.message;
+                    document.getElementById('profileError').style.display = 'block';
+                    document.getElementById('profileSuccess').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                document.getElementById('profileError').textContent = 'An error occurred while updating profile';
+                document.getElementById('profileError').style.display = 'block';
+                document.getElementById('profileSuccess').style.display = 'none';
+            })
+            .finally(() => {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Changes';
+            });
+        }
+
+        function resetProfileForm() {
+            document.getElementById('firstNameError').style.display = 'none';
+            document.getElementById('lastNameError').style.display = 'none';
+            document.getElementById('profileSuccess').style.display = 'none';
+            document.getElementById('profileError').style.display = 'none';
+            profileImageFile = null;
+        }
+
+        // ========================================
+        // GROUP MANAGEMENT
+        // ========================================
+
+        function openCreateGroupModal() {
+            const modal = document.getElementById('createGroupModal');
+            modal.style.display = 'block';
+            resetGroupForm();
+        }
+
+        function closeCreateGroupModal() {
+            const modal = document.getElementById('createGroupModal');
+            modal.style.display = 'none';
+            resetGroupForm();
+        }
+
+        function previewGroupImage(input) {
+            if (input.files && input.files[0]) {
+                groupImageFile = input.files[0];
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    const groupImagePreview = document.getElementById('groupImagePreview');
+                    groupImagePreview.className = 'group-image-preview';
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.alt = 'Group Preview';
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.objectFit = 'cover';
+                    img.style.borderRadius = '50%';
+                    groupImagePreview.innerHTML = '';
+                    groupImagePreview.appendChild(img);
+                }
+
+                reader.readAsDataURL(groupImageFile);
+            }
+        }
+
+        function createGroupSubmit() {
+            const groupName = document.getElementById('groupName').value.trim();
+            const checkboxes = document.querySelectorAll('.member-checkbox:checked');
+            const createBtn = document.getElementById('createGroupBtn');
+
+            // Validate inputs
+            let isValid = true;
+
+            if (!groupName) {
+                document.getElementById('groupNameError').textContent = 'Group name is required';
+                document.getElementById('groupNameError').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('groupNameError').style.display = 'none';
+            }
+
+            if (checkboxes.length === 0) {
+                document.getElementById('membersError').textContent = 'Please select at least one member';
+                document.getElementById('membersError').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('membersError').style.display = 'none';
+            }
+
+            if (!isValid) return;
+
+            createBtn.disabled = true;
+            createBtn.textContent = 'Creating...';
+
+            const formData = new FormData();
+            formData.append('GroupName', groupName);
+
+            // Add selected members
+            checkboxes.forEach(checkbox => {
+                formData.append('SelectedMembers', checkbox.value);
+            });
+
+            // Add group image if selected
+            if (groupImageFile) {
+                formData.append('GroupImage', groupImageFile);
+            }
+
+            fetch('/UserDashboard/CreateGroup', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('groupSuccess').textContent = data.message;
+                    document.getElementById('groupSuccess').style.display = 'block';
+                    document.getElementById('groupError').style.display = 'none';
+
+                    // Clear the saved scroll position before reload
+                    sessionStorage.removeItem('userListScrollPosition');
+
+                    // Close modal and reload page after 1 second
+                    setTimeout(() => {
+                        closeCreateGroupModal();
+                        // Force a complete page reload to get updated user/group list
+                        window.location.href = '/UserDashboard';
+                    }, 1000);
+                } else {
+                    document.getElementById('groupError').textContent = data.message;
+                    document.getElementById('groupError').style.display = 'block';
+                    document.getElementById('groupSuccess').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('groupError').textContent = 'An error occurred while creating group';
+                document.getElementById('groupError').style.display = 'block';
+                document.getElementById('groupSuccess').style.display = 'none';
+            })
+            .finally(() => {
+                createBtn.disabled = false;
+                createBtn.textContent = 'Create Group';
+            });
+        }
+
+        function resetGroupForm() {
+            document.getElementById('groupName').value = '';
+            document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = false);
+            document.getElementById('groupNameError').style.display = 'none';
+            document.getElementById('membersError').style.display = 'none';
+            document.getElementById('groupSuccess').style.display = 'none';
+            document.getElementById('groupError').style.display = 'none';
+            groupImageFile = null;
+
+            const groupImagePreview = document.getElementById('groupImagePreview');
+            groupImagePreview.className = 'group-image-placeholder';
+            groupImagePreview.innerHTML = '👥';
+        }
+
+        function handleChatHeaderClick() {
+            if (currentReceiverType === 'group') {
+                openEditGroupModal();
+            }
+        }
+
+        function openEditGroupModal() {
+            if (currentReceiverType !== 'group') return;
+
+            const modal = document.getElementById('editGroupModal');
+            const groupItem = document.querySelector(`.user-item[data-group-id="${currentReceiverId}"]`);
+
+            if (groupItem) {
+                const groupName = groupItem.getAttribute('data-group-name');
+                const groupPhoto = groupItem.getAttribute('data-group-photo');
+
+                document.getElementById('editGroupName').value = groupName;
+
+                const editGroupImagePreview = document.getElementById('editGroupImagePreview');
+                if (groupPhoto && groupPhoto !== '') {
+                    editGroupImagePreview.className = 'edit-group-image-preview';
+                    editGroupImagePreview.innerHTML = '';
+                    const img = document.createElement('img');
+                    img.src = 'data:image/jpeg;base64,' + groupPhoto;
+                    img.alt = groupName;
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.borderRadius = '50%';
+                    img.style.objectFit = 'cover';
+                    editGroupImagePreview.appendChild(img);
+                } else {
+                    editGroupImagePreview.className = 'edit-group-image-placeholder';
+                    editGroupImagePreview.innerHTML = '👥';
+                }
+            }
+
+            modal.style.display = 'block';
+            resetEditGroupForm();
+        }
+
+        function closeEditGroupModal() {
+            const modal = document.getElementById('editGroupModal');
+            modal.style.display = 'none';
+            resetEditGroupForm();
+        }
+
+        function previewEditGroupImage(input) {
+            if (input.files && input.files[0]) {
+                editGroupImageFile = input.files[0];
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    const editGroupImagePreview = document.getElementById('editGroupImagePreview');
+                    editGroupImagePreview.className = 'edit-group-image-preview';
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.alt = 'Group Preview';
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.borderRadius = '50%';
+                    img.style.objectFit = 'cover';
+                    editGroupImagePreview.innerHTML = '';
+                    editGroupImagePreview.appendChild(img);
+                }
+
+                reader.readAsDataURL(editGroupImageFile);
+            }
+        }
+
+        function updateGroup() {
+            const groupName = document.getElementById('editGroupName').value.trim();
+            const updateBtn = document.getElementById('updateGroupBtn');
+
+            // Validate inputs
+            let isValid = true;
+
+            if (!groupName) {
+                document.getElementById('editGroupNameError').textContent = 'Group name is required';
+                document.getElementById('editGroupNameError').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('editGroupNameError').style.display = 'none';
+            }
+
+            if (!isValid) return;
+
+            updateBtn.disabled = true;
+            updateBtn.textContent = 'Updating...';
+
+            const formData = new FormData();
+            formData.append('GroupId', currentReceiverId);
+            formData.append('GroupName', groupName);
+
+            if (editGroupImageFile) {
+                formData.append('GroupImage', editGroupImageFile);
+            }
+
+            fetch('/UserDashboard/UpdateGroup', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('editGroupSuccess').textContent = data.message;
+                    document.getElementById('editGroupSuccess').style.display = 'block';
+                    document.getElementById('editGroupError').style.display = 'none';
+
+                    // Update the group item in the list
+                    const groupItem = document.querySelector(`.user-item[data-group-id="${currentReceiverId}"]`);
+                    if (groupItem) {
+                        groupItem.setAttribute('data-group-name', groupName);
+                        const userNameSpan = groupItem.querySelector('.user-name');
+                        if (userNameSpan) {
+                            userNameSpan.textContent = groupName;
+                        }
+
+                        // Update chat header
+                        updateGroupChatHeader(groupName, data.groupImageBase64 || groupItem.getAttribute('data-group-photo'));
+
+                        // Update group photo if changed
+                        if (editGroupImageFile) {
+                            groupItem.setAttribute('data-group-photo', data.groupImageBase64);
+                            const groupPhoto = groupItem.querySelector('.user-photo');
+                            if (groupPhoto) {
+                                groupPhoto.src = 'data:image/jpeg;base64,' + data.groupImageBase64;
+                            }
+                        }
+                    }
+
+                    // Close modal after 1 second
+                    setTimeout(() => {
+                        closeEditGroupModal();
+                    }, 1000);
+                } else {
+                    document.getElementById('editGroupError').textContent = data.message;
+                    document.getElementById('editGroupError').style.display = 'block';
+                    document.getElementById('editGroupSuccess').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('editGroupError').textContent = 'An error occurred while updating group';
+                document.getElementById('editGroupError').style.display = 'block';
+                document.getElementById('editGroupSuccess').style.display = 'none';
+            })
+            .finally(() => {
+                updateBtn.disabled = false;
+                updateBtn.textContent = 'Update Group';
+            });
+        }
+
+        function resetEditGroupForm() {
+            document.getElementById('editGroupNameError').style.display = 'none';
+            document.getElementById('editGroupSuccess').style.display = 'none';
+            document.getElementById('editGroupError').style.display = 'none';
+            editGroupImageFile = null;
+        }
+
+        function openViewMembersModal() {
+            if (currentReceiverType !== 'group') return;
+
+            const modal = document.getElementById('viewMembersModal');
+            modal.style.display = 'block';
+            loadGroupMembers();
+        }
+
+        function closeViewMembersModal() {
+            const modal = document.getElementById('viewMembersModal');
+            modal.style.display = 'none';
+        }
+
+        function loadGroupMembers() {
+            if (!currentReceiverId) return;
+
+            fetch('/UserDashboard/GetGroupMembers?groupId=' + currentReceiverId)
+            .then(response => response.json())
+            .then(data => {
+                const membersList = document.getElementById('viewMembersList');
+                if (data.success && data.members.length > 0) {
+                    membersList.innerHTML = '';
+                    data.members.forEach(member => {
+                        const memberItem = document.createElement('div');
+                        memberItem.className = 'member-item';
+
+                        let avatarHtml = '';
+                        if (member.photoBase64) {
+                            avatarHtml = `<img src="data:image/jpeg;base64,${member.photoBase64}" alt="${member.fullName}" class="member-avatar">`;
+                        } else {
+                            avatarHtml = `<div class="member-default-avatar">${member.firstName[0]}${member.lastName[0]}</div>`;
+                        }
+
+                        memberItem.innerHTML = `
+                            ${avatarHtml}
+                            <div class="member-info">
+                                <div class="member-name">${member.fullName}</div>
+                                <div class="member-email">${member.email}</div>
+                            </div>
+                            ${member.canRemove ? `<button class="remove-member-btn" onclick="removeMemberFromGroup('${member.email}')">Remove</button>` : ''}
+                        `;
+
+                        membersList.appendChild(memberItem);
+                    });
+                } else {
+                    membersList.innerHTML = '<div class="no-members-message">No members found</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading group members:', error);
+                const membersList = document.getElementById('viewMembersList');
+                membersList.innerHTML = '<div class="no-members-message">Error loading members</div>';
+            });
+        }
+
+        function removeMemberFromGroup(memberEmail) {
+            if (!confirm('Are you sure you want to remove this member from the group?')) {
+                return;
+            }
+
+            fetch('/UserDashboard/RemoveMemberFromGroup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `groupId=${currentReceiverId}&memberEmail=${encodeURIComponent(memberEmail)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadGroupMembers(); // Reload the members list
+                } else {
+                    alert('Failed to remove member: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while removing member');
+            });
+        }
+
+        function openAddMembersModal() {
+            if (currentReceiverType !== 'group') return;
+
+            const modal = document.getElementById('addMembersModal');
+            modal.style.display = 'block';
+            loadAvailableMembers();
+        }
+
+        function closeAddMembersModal() {
+            const modal = document.getElementById('addMembersModal');
+            modal.style.display = 'none';
+            resetAddMembersForm();
+        }
+
+        function loadAvailableMembers() {
+            if (!currentReceiverId) return;
+
+            fetch('/UserDashboard/GetAvailableMembers?groupId=' + currentReceiverId)
+            .then(response => response.json())
+            .then(data => {
+                const availableMembersList = document.getElementById('availableMembersList');
+                if (data.success && data.availableMembers.length > 0) {
+                    availableMembersList.innerHTML = '';
+                    selectedMembersToAdd = [];
+
+                    data.availableMembers.forEach(member => {
+                        const memberItem = document.createElement('div');
+                        memberItem.className = 'available-member-item';
+                        memberItem.setAttribute('data-email', member.email);
+
+                        let avatarHtml = '';
+                        if (member.photoBase64) {
+                            avatarHtml = `<img src="data:image/jpeg;base64,${member.photoBase64}" alt="${member.fullName}" class="member-avatar">`;
+                        } else {
+                            avatarHtml = `<div class="member-default-avatar">${member.firstName[0]}${member.lastName[0]}</div>`;
+                        }
+
+                        memberItem.innerHTML = `
+                            <input type="checkbox" class="member-checkbox" value="${member.email}" style="margin-right: 10px;">
+                            ${avatarHtml}
+                            <div class="member-info">
+                                <div class="member-name">${member.fullName}</div>
+                                <div class="member-email">${member.email}</div>
+                            </div>
+                        `;
+
+                        memberItem.addEventListener('click', function(e) {
+                            if (e.target.type !== 'checkbox') {
+                                const checkbox = this.querySelector('.member-checkbox');
+                                checkbox.checked = !checkbox.checked;
+                            }
+
+                            const checkbox = this.querySelector('.member-checkbox');
+                            if (checkbox.checked) {
+                                this.classList.add('selected');
+                                if (!selectedMembersToAdd.includes(member.email)) {
+                                    selectedMembersToAdd.push(member.email);
+                                }
+                            } else {
+                                this.classList.remove('selected');
+                                const index = selectedMembersToAdd.indexOf(member.email);
+                                if (index > -1) {
+                                    selectedMembersToAdd.splice(index, 1);
+                                }
+                            }
+                        });
+
+                        availableMembersList.appendChild(memberItem);
+                    });
+                } else {
+                    availableMembersList.innerHTML = '<div class="no-members-message">No available users to add</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading available members:', error);
+                const availableMembersList = document.getElementById('availableMembersList');
+                availableMembersList.innerHTML = '<div class="no-members-message">Error loading available members</div>';
+            });
+        }
+
+        function addMembersToGroup() {
+            if (selectedMembersToAdd.length === 0) {
+                document.getElementById('addMembersError').textContent = 'Please select at least one member to add';
+                document.getElementById('addMembersError').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('addMembersError').style.display = 'none';
+
+            const addBtn = document.getElementById('addMembersBtn');
+            addBtn.disabled = true;
+            addBtn.textContent = 'Adding...';
+
+            fetch('/UserDashboard/AddMembersToGroup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    groupId: currentReceiverId,
+                    memberEmails: selectedMembersToAdd
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('addMembersSuccess').textContent = data.message;
+                    document.getElementById('addMembersSuccess').style.display = 'block';
+                    document.getElementById('addMembersError').style.display = 'none';
+
+                    // Close modal after 1 second
+                    setTimeout(() => {
+                        closeAddMembersModal();
+                    }, 1000);
+                } else {
+                    document.getElementById('addMembersError').textContent = data.message;
+                    document.getElementById('addMembersError').style.display = 'block';
+                    document.getElementById('addMembersSuccess').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('addMembersError').textContent = 'An error occurred while adding members';
+                document.getElementById('addMembersError').style.display = 'block';
+                document.getElementById('addMembersSuccess').style.display = 'none';
+            })
+            .finally(() => {
+                addBtn.disabled = false;
+                addBtn.textContent = 'Add Selected Members';
+            });
+        }
+
+        function resetAddMembersForm() {
+            document.getElementById('addMembersError').style.display = 'none';
+            document.getElementById('addMembersSuccess').style.display = 'none';
+            selectedMembersToAdd = [];
+        }
+
+        // ========================================
+        // FILTER & SORTING
+        // ========================================
+
+        function setFilter(filter) {
+            currentFilter = filter;
+
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Filter users and groups
+            filterChats();
+        }
+
+        function filterChats() {
+            const userItems = document.querySelectorAll('.user-item');
+            let hasVisibleGroups = false;
+            let hasVisibleUsers = false;
+
+            userItems.forEach(item => {
+                const isGroup = item.getAttribute('data-is-group') === 'true';
+
+                switch(currentFilter) {
+                    case 'all':
+                        item.style.display = 'flex';
+                        if (isGroup) hasVisibleGroups = true;
+                        else hasVisibleUsers = true;
+                        break;
+                    case 'person':
+                        // Show only individual users (not groups)
+                        if (isGroup) {
+                            item.style.display = 'none';
+                        } else {
+                            item.style.display = 'flex';
+                            hasVisibleUsers = true;
+                        }
+                        break;
+                    case 'group':
+                        // Show only groups
+                        if (isGroup) {
+                            item.style.display = 'flex';
+                            hasVisibleGroups = true;
+                        } else {
+                            item.style.display = 'none';
+                        }
+                        break;
+                }
+            });
+
+            // Remove any existing "no results" message
+            const existingNoResults = document.getElementById('noResultsMessage');
+            if (existingNoResults) {
+                existingNoResults.remove();
+            }
+
+            // Add "no results" message if needed
+            const userList = document.getElementById('userList');
+            if (currentFilter === 'group' && !hasVisibleGroups) {
+                const noResultsMessage = document.createElement('li');
+                noResultsMessage.id = 'noResultsMessage';
+                noResultsMessage.className = 'no-users';
+                noResultsMessage.innerHTML = 'No groups found';
+                userList.appendChild(noResultsMessage);
+            } else if (currentFilter === 'person' && !hasVisibleUsers) {
+                const noResultsMessage = document.createElement('li');
+                noResultsMessage.id = 'noResultsMessage';
+                noResultsMessage.className = 'no-users';
+                noResultsMessage.innerHTML = 'No users found';
+                userList.appendChild(noResultsMessage);
+            } else if (currentFilter === 'all' && !hasVisibleGroups && !hasVisibleUsers) {
+                const noResultsMessage = document.createElement('li');
+                noResultsMessage.id = 'noResultsMessage';
+                noResultsMessage.className = 'no-users';
+                noResultsMessage.innerHTML = 'No chats available';
+                userList.appendChild(noResultsMessage);
+            }
+        }
+
+        function sortChatList() {
+            const userList = document.getElementById('userList');
+            if (!userList) return;
+
+            // Get all chat items (both users and groups)
+            const allChatItems = Array.from(userList.querySelectorAll('.user-item'));
+
+            // Sort by most recent activity
+            allChatItems.sort((a, b) => {
+                let timeA = '0001-01-01T00:00:00';
+                let timeB = '0001-01-01T00:00:00';
+
+                if (a.dataset.userId) {
+                    timeA = a.dataset.lastMessageTime || timeA;
+                } else if (a.dataset.groupId) {
+                    timeA = a.dataset.lastActivityTime || timeA;
+                }
+
+                if (b.dataset.userId) {
+                    timeB = b.dataset.lastMessageTime || timeB;
+                } else if (b.dataset.groupId) {
+                    timeB = b.dataset.lastActivityTime || timeB;
+                }
+
+                return new Date(timeB) - new Date(timeA);
+            });
+
+            // Re-append in sorted order
+            allChatItems.forEach(item => userList.appendChild(item));
+        }
+
+        // ========================================
+        // IMAGE MODAL
+        // ========================================
+
+        function openImageModal(imageSrc) {
+            const modal = document.getElementById('imageModal');
+            const expandedImg = document.getElementById('expandedImage');
+            expandedImg.src = imageSrc;
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close image modal when clicking outside the image
+        document.getElementById('imageModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeImageModal();
+            }
+        });
+
+        // ========================================
+        // SCROLL HANDLING
+        // ========================================
+
+        function setupScrollHandling() {
+            const chatMessages = document.getElementById('chatMessages');
+            if (!chatMessages) return;
+
+            chatMessages.addEventListener('scroll', function() {
+                const threshold = 100;
+                const position = chatMessages.scrollTop + chatMessages.clientHeight;
+                const height = chatMessages.scrollHeight;
+                shouldAutoScroll = (height - position) <= threshold;
+            });
+
+            const userListSection = document.querySelector('.user-list-section');
+            if (userListSection) {
+                userListSection.addEventListener('scroll', function() {
+                    saveUserListScroll();
+                });
+            }
+        }
+
+        function restoreUserListScroll() {
+            const userListSection = document.querySelector('.user-list-section');
+            const savedScrollPosition = sessionStorage.getItem('userListScrollPosition');
+
+            if (userListSection && savedScrollPosition) {
+                setTimeout(() => {
+                    userListSection.scrollTop = parseInt(savedScrollPosition);
+                }, 100);
+            }
+        }
+
+        function saveUserListScroll() {
+            const userListSection = document.querySelector('.user-list-section');
+            if (userListSection) {
+                sessionStorage.setItem('userListScrollPosition', userListSection.scrollTop.toString());
+            }
+        }
+
+        // ========================================
+        // EVENT LISTENERS
+        // ========================================
+
+        // Close emoji picker when clicking outside
+        document.addEventListener('click', function(e) {
+            const emojiPicker = document.getElementById('emojiPicker');
+            const emojiBtn = document.querySelector('.action-btn');
+
+            if (isEmojiPickerActive && emojiPicker && !emojiPicker.contains(e.target) && emojiBtn && !emojiBtn.contains(e.target)) {
+                toggleEmojiPicker(true);
+            }
+        });
+
+        // Close modals when clicking outside
+        window.addEventListener('click', function(event) {
+            const modals = [
+                'profileModal', 'createGroupModal', 'editGroupModal',
+                'viewMembersModal', 'addMembersModal', 'incomingCallModal'
+            ];
+
+            modals.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (event.target === modal) {
+                    if (modalId === 'profileModal') closeProfileModal();
+                    if (modalId === 'createGroupModal') closeCreateGroupModal();
+                    if (modalId === 'editGroupModal') closeEditGroupModal();
+                    if (modalId === 'viewMembersModal') closeViewMembersModal();
+                    if (modalId === 'addMembersModal') closeAddMembersModal();
+                    if (modalId === 'incomingCallModal') rejectIncomingCall();
+                }
+            });
+        });
+
+        // Save scroll position when leaving the page
+        window.addEventListener('beforeunload', function() {
+            saveUserListScroll();
+            stopAutoRefresh();
+        });
+
+        // Auto-scroll to bottom when chat is opened initially
+        window.addEventListener('load', function() {
+            const chatMessages = document.getElementById('chatMessages');
+            if (chatMessages) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        });
+    </script>
+}

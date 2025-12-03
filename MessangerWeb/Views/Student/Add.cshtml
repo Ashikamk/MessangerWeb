@@ -1,0 +1,435 @@
+﻿@model MessangerWeb.Models.Student
+
+@{
+    ViewData["Title"] = "Add Student";
+    Layout = "_Layout"; // Use the layout with sticky navbar
+}
+
+<style>
+    body {
+        background-color: lightblue;
+    }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.85);
+            z-index: -1;
+        }
+
+    .page-title {
+        text-align: center;
+        margin: 20px 0;
+        color: #2c3e50;
+        font-weight: 700;
+        font-size: 2.2rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .form-container {
+        max-width: 1200px;
+        margin: 0 auto 30px;
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        padding: 30px 40px;
+    }
+
+    .form-section-title {
+        color: #667eea;
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin-top: 25px;
+        margin-bottom: 15px;
+        padding-left: 12px;
+        padding-bottom: 8px;
+        border-left: 4px solid #667eea;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+        .form-section-title:first-of-type {
+            margin-top: 0;
+        }
+
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+    }
+
+    .form-control, .form-select {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 10px 15px;
+        transition: all 0.3s ease;
+    }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .form-control::placeholder {
+            color: #adb5bd;
+            font-style: italic;
+        }
+
+    .text-danger {
+        font-size: 0.875rem;
+        margin-top: 5px;
+    }
+
+    .required-field {
+        color: #dc3545;
+        font-weight: bold;
+    }
+
+    .hobbies-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+        margin-top: 10px;
+    }
+
+    .hobby-checkbox {
+        display: flex;
+        align-items: center;
+        padding: 12px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+
+        .hobby-checkbox:hover {
+            background-color: #e9ecef;
+            transform: translateX(3px);
+            border-color: #667eea;
+        }
+
+        .hobby-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 10px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        .hobby-checkbox label {
+            margin: 0;
+            cursor: pointer;
+            user-select: none;
+            flex: 1;
+        }
+
+    .photo-upload-container {
+        border: 2px dashed #667eea;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        background-color: #f8f9fa;
+        transition: all 0.3s ease;
+    }
+
+        .photo-upload-container:hover {
+            background-color: #e9ecef;
+            border-color: #764ba2;
+        }
+
+        .photo-upload-container input[type="file"] {
+            border: none;
+            background: transparent;
+        }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        padding: 12px 35px;
+        font-weight: 600;
+        border-radius: 25px;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+    }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        border: none;
+        padding: 12px 35px;
+        font-weight: 600;
+        border-radius: 25px;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+    }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+        }
+
+    .form-actions {
+        text-align: center;
+        padding-top: 25px;
+        margin-top: 30px;
+        border-top: 2px solid #e9ecef;
+    }
+
+    .alert {
+        border-radius: 8px;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 25px;
+    }
+
+    .alert-success {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .alert-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+
+    .form-text {
+        color: #6c757d;
+        font-size: 0.875rem;
+        margin-top: 5px;
+        display: block;
+    }
+
+    .row {
+        margin-bottom: 0;
+    }
+
+    .mb-3 {
+        margin-bottom: 1rem !important;
+    }
+</style>
+
+<div class="container-fluid">
+    <h1 class="page-title">Add New User</h1>
+
+    <div class="form-container">
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Please fix the following errors:</strong>
+                <ul class="mb-0 mt-2">
+                    @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                    {
+                        <li>@error.ErrorMessage</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <form asp-action="Add" asp-controller="Student" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+
+            <h4 class="form-section-title"><i class="fas fa-user me-2"></i>Personal Information</h4>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="FirstName" class="form-label">First Name <span class="text-danger">*</span></label>
+                        <input asp-for="FirstName" class="form-control" placeholder="Enter first name" />
+                        <span asp-validation-for="FirstName" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="LastName" class="form-label">Last Name <span class="text-danger">*</span></label>
+                        <input asp-for="LastName" class="form-control" placeholder="Enter last name" />
+                        <span asp-validation-for="LastName" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="Gender" class="form-label">Gender <span class="text-danger">*</span></label>
+                        <select asp-for="Gender" class="form-select">
+                            <option value="">Select Gender</option>
+                            @foreach (var g in ViewBag.Genders)
+                            {
+                                <option value="@g">@g</option>
+                            }
+                        </select>
+                        <span asp-validation-for="Gender" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="DateOfBirth" class="form-label">Date of Birth <span class="text-danger">*</span></label>
+                        <input asp-for="DateOfBirth" type="date" class="form-control" />
+                        <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <h4 class="form-section-title"><i class="fas fa-envelope me-2"></i>Contact Information</h4>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label">Email <span class="text-danger">*</span></label>
+                        <input asp-for="Email" type="email" class="form-control" placeholder="example@email.com" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="Phone" class="form-label">Phone <span class="text-danger">*</span></label>
+                        <input asp-for="Phone" class="form-control" placeholder="Enter phone number" />
+                        <span asp-validation-for="Phone" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <h4 class="form-section-title"><i class="fas fa-graduation-cap me-2"></i>Education & Status</h4>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="Education" class="form-label">Education <span class="text-danger">*</span></label>
+                        <select asp-for="Education" class="form-select">
+                            <option value="">Select Qualification</option>
+                            @foreach (var q in ViewBag.Qualifications)
+                            {
+                                <option value="@q">@q</option>
+                            }
+                        </select>
+                        <span asp-validation-for="Education" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select asp-for="Status" class="form-select">
+                            <option value="">Select Status</option>
+                            @foreach (var s in ViewBag.Statuses)
+                            {
+                                <option value="@s" selected="@(s == "Active")">@s</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label"><i class="fas fa-heart me-2"></i>Hobbies</label>
+                <div class="hobbies-grid">
+                    @foreach (var h in ViewBag.Hobbies)
+                    {
+                        <div class="hobby-checkbox">
+                            <input class="form-check-input" type="checkbox" name="SelectedHobbies" value="@h" id="hobby_@h" />
+                            <label class="form-check-label" for="hobby_@h">@h</label>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label"><i class="fas fa-camera me-2"></i>Profile Photo</label>
+                <div class="photo-upload-container">
+                    <i class="fas fa-cloud-upload-alt fa-2x mb-2" style="color: #667eea;"></i>
+                    <input type="file" name="PhotoFile" class="form-control" accept="image/*" />
+                    <small class="form-text text-muted">Accepted formats: JPG, PNG, GIF (Max 5MB)</small>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label"><i class="fas fa-lock me-2"></i>Password <span class="text-danger">*</span></label>
+                <input asp-for="Password" type="password" class="form-control" placeholder="Minimum 6 characters" />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+
+            <h4 class="form-section-title"><i class="fas fa-map-marker-alt me-2"></i>Address Information</h4>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="Country" class="form-label">Country <span class="text-danger">*</span></label>
+                        <input asp-for="Country" class="form-control" placeholder="Enter country" />
+                        <span asp-validation-for="Country" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="State" class="form-label">State <span class="text-danger">*</span></label>
+                        <input asp-for="State" class="form-control" placeholder="Enter state" />
+                        <span asp-validation-for="State" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="City" class="form-label">City <span class="text-danger">*</span></label>
+                        <input asp-for="City" class="form-control" placeholder="Enter city" />
+                        <span asp-validation-for="City" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="PostalCode" class="form-label">Postal Code <span class="text-danger">*</span></label>
+                        <input asp-for="PostalCode" class="form-control" placeholder="Enter postal code" />
+                        <span asp-validation-for="PostalCode" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Address" class="form-label">Full Address <span class="text-danger">*</span></label>
+                <textarea asp-for="Address" class="form-control" rows="3" placeholder="Enter complete address"></textarea>
+                <span asp-validation-for="Address" class="text-danger"></span>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary me-3">
+                    <i class="fas fa-save me-2"></i> Add User
+                </button>
+                <a asp-action="List" class="btn btn-secondary">
+                    <i class="fas fa-list me-2"></i> View List
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
