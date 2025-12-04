@@ -87,7 +87,7 @@ namespace MessangerWeb.Controllers
 
                     string query = @"
             INSERT INTO students 
-            (firstname, lastname, gender, dateOfBirth, email, phone, education, status, hobbies, postalcode, country, state, city, address, password, photo)
+            (""firstname"", ""lastname"", ""gender"", ""dateOfBirth"", ""email"", ""phone"", ""education"", ""status"", ""hobbies"", ""postalcode"", ""country"", ""state"", ""city"", ""address"", ""password"", ""photo"")
             VALUES
             (@firstname, @lastname, @gender, @dateOfBirth, @email, @phone, @education, @status, @hobbies, @postalcode, @country, @state, @city, @address, @password, @photo)";
 
@@ -355,11 +355,11 @@ namespace MessangerWeb.Controllers
                     await con.OpenAsync();
                     string query = @"
                 UPDATE students
-                SET firstname=@FirstName, lastname=@LastName, gender=@Gender, dateOfBirth=@DateOfBirth,
-                    email=@Email, phone=@Phone, education=@Education, status=@Status,
-                    hobbies=@Hobbies, postalcode=@PostalCode, country=@Country, state=@State,
-                    city=@City, address=@Address, password=@Password, photo=@Photo
-                WHERE id=@Id";
+                SET ""firstname""=@FirstName, ""lastname""=@LastName, ""gender""=@Gender, ""dateOfBirth""=@DateOfBirth,
+                    ""email""=@Email, ""phone""=@Phone, ""education""=@Education, ""status""=@Status,
+                    ""hobbies""=@Hobbies, ""postalcode""=@PostalCode, ""country""=@Country, ""state""=@State,
+                    ""city""=@City, ""address""=@Address, ""password""=@Password, ""photo""=@Photo
+                WHERE ""id""=@Id";
 
                     using (var cmd = new NpgsqlCommand(query, con))
                     {
