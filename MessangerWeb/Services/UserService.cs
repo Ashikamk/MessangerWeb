@@ -1,4 +1,4 @@
-﻿namespace MessangerWeb.Services
+namespace MessangerWeb.Services
 {
     public class UserService
     {

@@ -1,7 +1,7 @@
-﻿using System.Data;
+using System.Data;
 using MessangerWeb.Models;
 using Microsoft.AspNetCore.Mvc;
-using MySql.Data.MySqlClient;
+using Npgsql;
 using Microsoft.Extensions.Configuration;
 
 namespace MessangerWeb.Controllers
@@ -80,7 +80,7 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var con = new MySqlConnection(connectionString))
+                using (var con = new NpgsqlConnection(connectionString))
                 {
                     await con.OpenAsync();
                     Console.WriteLine("Database connection opened successfully");
@@ -91,7 +91,7 @@ namespace MessangerWeb.Controllers
             VALUES
             (@firstname, @lastname, @gender, @dateOfBirth, @email, @phone, @education, @status, @hobbies, @postalcode, @country, @state, @city, @address, @password, @photo)";
 
-                    using (var cmd = new MySqlCommand(query, con))
+                    using (var cmd = new NpgsqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@firstname", model.FirstName ?? string.Empty);
                         cmd.Parameters.AddWithValue("@lastname", model.LastName ?? string.Empty);
@@ -108,7 +108,7 @@ namespace MessangerWeb.Controllers
                         cmd.Parameters.AddWithValue("@city", model.City ?? string.Empty);
                         cmd.Parameters.AddWithValue("@address", model.Address ?? string.Empty);
                         cmd.Parameters.AddWithValue("@password", model.Password ?? string.Empty);
-                        cmd.Parameters.Add("@photo", MySqlDbType.LongBlob).Value = (object)model.Photo ?? DBNull.Value;
+                        cmd.Parameters.Add("@photo", NpgsqlTypes.NpgsqlDbType.Bytea).Value = (object)model.Photo ?? DBNull.Value;
 
                         Console.WriteLine("Executing SQL command...");
                         int rowsAffected = await cmd.ExecuteNonQueryAsync();
@@ -152,12 +152,12 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var con = new MySqlConnection(connectionString))
+                using (var con = new NpgsqlConnection(connectionString))
                 {
                     await con.OpenAsync();
                     string query = "SELECT * FROM students";
 
-                    using (var cmd = new MySqlCommand(query, con))
+                    using (var cmd = new NpgsqlCommand(query, con))
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
@@ -195,12 +195,12 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var con = new MySqlConnection(connectionString))
+                using (var con = new NpgsqlConnection(connectionString))
                 {
                     await con.OpenAsync();
                     string query = @"SELECT * FROM students WHERE id = @id";
 
-                    using (var cmd = new MySqlCommand(query, con))
+                    using (var cmd = new NpgsqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@id", id);
 
@@ -254,12 +254,12 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var con = new MySqlConnection(connectionString))
+                using (var con = new NpgsqlConnection(connectionString))
                 {
                     await con.OpenAsync();
                     string query = @"SELECT * FROM students WHERE id=@id";
 
-                    using (var cmd = new MySqlCommand(query, con))
+                    using (var cmd = new NpgsqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@id", id);
 
@@ -350,7 +350,7 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var con = new MySqlConnection(connectionString))
+                using (var con = new NpgsqlConnection(connectionString))
                 {
                     await con.OpenAsync();
                     string query = @"
@@ -361,7 +361,7 @@ namespace MessangerWeb.Controllers
                     city=@City, address=@Address, password=@Password, photo=@Photo
                 WHERE id=@Id";
 
-                    using (var cmd = new MySqlCommand(query, con))
+                    using (var cmd = new NpgsqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@Id", model.Id);
                         cmd.Parameters.AddWithValue("@FirstName", model.FirstName ?? "");
@@ -379,7 +379,7 @@ namespace MessangerWeb.Controllers
                         cmd.Parameters.AddWithValue("@City", model.City ?? "");
                         cmd.Parameters.AddWithValue("@Address", model.Address ?? "");
                         cmd.Parameters.AddWithValue("@Password", model.Password ?? ""); // Save as plain text
-                        cmd.Parameters.Add("@Photo", MySqlDbType.LongBlob).Value = (object)model.Photo ?? DBNull.Value;
+                        cmd.Parameters.Add("@Photo", NpgsqlTypes.NpgsqlDbType.Bytea).Value = (object)model.Photo ?? DBNull.Value;
 
                         await cmd.ExecuteNonQueryAsync();
                     }
@@ -404,12 +404,12 @@ namespace MessangerWeb.Controllers
             {
                 Student student = null;
 
-                using (var con = new MySqlConnection(connectionString))
+                using (var con = new NpgsqlConnection(connectionString))
                 {
                     await con.OpenAsync();
                     string query = @"SELECT * FROM students WHERE id = @id";
 
-                    using (var cmd = new MySqlCommand(query, con))
+                    using (var cmd = new NpgsqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@id", id);
 
@@ -480,12 +480,12 @@ namespace MessangerWeb.Controllers
         // Helper method to get student by ID
         private async Task<Student> GetStudentById(int id)
         {
-            using (var con = new MySqlConnection(connectionString))
+            using (var con = new NpgsqlConnection(connectionString))
             {
                 await con.OpenAsync();
                 string query = @"SELECT password, photo FROM students WHERE id=@id";
 
-                using (var cmd = new MySqlCommand(query, con))
+                using (var cmd = new NpgsqlCommand(query, con))
                 {
                     cmd.Parameters.AddWithValue("@id", id);
 

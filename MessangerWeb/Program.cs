@@ -52,7 +52,7 @@ namespace WebsiteApplication
             builder.Services.AddLogging();
 
             // Add your custom services
-            builder.Services.AddScoped<MySqlConnectionService>();
+
             builder.Services.AddScoped<IVideoCallHistoryService, VideoCallHistoryService>();
             builder.Services.AddScoped<IVideoCallParticipantService, VideoCallParticipantService>();
 

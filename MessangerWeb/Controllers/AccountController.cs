@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using MessangerWeb.Models;
 using Microsoft.AspNetCore.Mvc;
-using MySql.Data.MySqlClient;
+using Npgsql;
 using Microsoft.Extensions.Configuration;
 
 namespace MessangerWeb.Controllers
@@ -77,7 +77,7 @@ namespace MessangerWeb.Controllers
                     return View();
                 }
 
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
 
@@ -87,7 +87,7 @@ namespace MessangerWeb.Controllers
                                      AND password = @Password 
                                      AND status = 'Active'";
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@Email", Email);
                         command.Parameters.AddWithValue("@Password", Password);
@@ -128,7 +128,7 @@ namespace MessangerWeb.Controllers
                     }
                 }
             }
-            catch (MySqlException ex)
+            catch (NpgsqlException ex)
             {
                 ViewBag.ErrorMessage = $"Database error: {ex.Message}";
                 return View();
@@ -145,7 +145,7 @@ namespace MessangerWeb.Controllers
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
                     return true;
@@ -161,7 +161,7 @@ namespace MessangerWeb.Controllers
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
 
@@ -171,7 +171,7 @@ namespace MessangerWeb.Controllers
                                      AND password = @Password 
                                      AND status != 'Active'";
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@Email", email ?? "");
                         command.Parameters.AddWithValue("@Password", password ?? "");

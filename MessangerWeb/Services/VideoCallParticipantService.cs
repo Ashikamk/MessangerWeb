@@ -1,8 +1,9 @@
-﻿using System.Data;
+using System.Data;
 using System.Text.Json;
 using MessangerWeb.Services;
 using Microsoft.Extensions.Logging;
-using MySql.Data.MySqlClient;
+using Npgsql;
+using Microsoft.Extensions.Configuration;
 
 namespace MessangerWeb.Services
 {
@@ -18,12 +19,12 @@ namespace MessangerWeb.Services
 
     public class VideoCallParticipantService : IVideoCallParticipantService
     {
-        private readonly MySqlConnectionService _connectionService;
         private readonly ILogger<VideoCallParticipantService> _logger;
+        private readonly string _connectionString;
 
-        public VideoCallParticipantService(MySqlConnectionService connectionService, ILogger<VideoCallParticipantService> logger)
+        public VideoCallParticipantService(IConfiguration configuration, ILogger<VideoCallParticipantService> logger)
         {
-            _connectionService = connectionService;
+            _connectionString = configuration.GetConnectionString("DefaultConnection");
             _logger = logger;
         }
 
@@ -31,14 +32,14 @@ namespace MessangerWeb.Services
         {
             try
             {
-                using var connection = await _connectionService.GetConnectionAsync();
+                using var connection = new NpgsqlConnection(_connectionString); await connection.OpenAsync();
                 var query = @"
                     INSERT INTO VideoCallParticipants 
                     (ParticipantId, CallId, UserId, Status, CreatedAt)
                     VALUES 
                     (@ParticipantId, @CallId, @UserId, @Status, NOW())";
 
-                using var command = new MySqlCommand(query, connection);
+                using var command = new NpgsqlCommand(query, connection);
                 command.Parameters.AddWithValue("@ParticipantId", Guid.NewGuid().ToString());
                 command.Parameters.AddWithValue("@CallId", callId);
                 command.Parameters.AddWithValue("@UserId", userId);
@@ -59,7 +60,7 @@ namespace MessangerWeb.Services
         {
             try
             {
-                using var connection = await _connectionService.GetConnectionAsync();
+                using var connection = new NpgsqlConnection(_connectionString); await connection.OpenAsync();
 
                 string query;
                 if (status == "Joined" && joinedAt.HasValue)
@@ -85,7 +86,7 @@ namespace MessangerWeb.Services
                         WHERE CallId = @CallId AND UserId = @UserId";
                 }
 
-                using var command = new MySqlCommand(query, connection);
+                using var command = new NpgsqlCommand(query, connection);
                 command.Parameters.AddWithValue("@CallId", callId);
                 command.Parameters.AddWithValue("@UserId", userId);
                 command.Parameters.AddWithValue("@Status", status);
@@ -110,13 +111,13 @@ namespace MessangerWeb.Services
         {
             try
             {
-                using var connection = await _connectionService.GetConnectionAsync();
+                using var connection = new NpgsqlConnection(_connectionString); await connection.OpenAsync();
                 var query = @"
                     UPDATE VideoCallParticipants 
                     SET Duration = @Duration 
                     WHERE CallId = @CallId AND UserId = @UserId";
 
-                using var command = new MySqlCommand(query, connection);
+                using var command = new NpgsqlCommand(query, connection);
                 command.Parameters.AddWithValue("@CallId", callId);
                 command.Parameters.AddWithValue("@UserId", userId);
                 command.Parameters.AddWithValue("@Duration", duration);
@@ -137,7 +138,7 @@ namespace MessangerWeb.Services
 
             try
             {
-                using var connection = await _connectionService.GetConnectionAsync();
+                using var connection = new NpgsqlConnection(_connectionString); await connection.OpenAsync();
                 var query = @"
                     SELECT vcp.*, s.firstname, s.lastname, s.email, s.photo
                     FROM VideoCallParticipants vcp
@@ -145,7 +146,7 @@ namespace MessangerWeb.Services
                     WHERE vcp.CallId = @CallId
                     ORDER BY vcp.CreatedAt ASC";
 
-                using var command = new MySqlCommand(query, connection);
+                using var command = new NpgsqlCommand(query, connection);
                 command.Parameters.AddWithValue("@CallId", callId);
 
                 using var reader = await command.ExecuteReaderAsync();
@@ -184,7 +185,7 @@ namespace MessangerWeb.Services
         {
             try
             {
-                using var connection = await _connectionService.GetConnectionAsync();
+                using var connection = new NpgsqlConnection(_connectionString); await connection.OpenAsync();
 
                 // Get call basic info
                 var callQuery = @"
@@ -198,7 +199,7 @@ namespace MessangerWeb.Services
 
                 VideoCallDetails callDetails = null;
 
-                using (var command = new MySqlCommand(callQuery, connection))
+                using (var command = new NpgsqlCommand(callQuery, connection))
                 {
                     command.Parameters.AddWithValue("@CallId", callId);
 
@@ -242,7 +243,7 @@ namespace MessangerWeb.Services
                     else
                     {
                         var receiverQuery = "SELECT firstname, lastname FROM students WHERE id = @ReceiverId";
-                        using var command = new MySqlCommand(receiverQuery, connection);
+                        using var command = new NpgsqlCommand(receiverQuery, connection);
                         command.Parameters.AddWithValue("@ReceiverId", callDetails.ReceiverId);
 
                         using var reader = await command.ExecuteReaderAsync();
@@ -272,7 +273,7 @@ namespace MessangerWeb.Services
 
             try
             {
-                using var connection = await _connectionService.GetConnectionAsync();
+                using var connection = new NpgsqlConnection(_connectionString); await connection.OpenAsync();
 
                 // Get calls where user is caller or participant
                 var query = @"
@@ -285,7 +286,7 @@ namespace MessangerWeb.Services
 
                 var callIds = new List<string>();
 
-                using (var command = new MySqlCommand(query, connection))
+                using (var command = new NpgsqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@UserId", userId);
 
@@ -348,3 +349,4 @@ namespace MessangerWeb.Services
         public List<VideoCallParticipant> Participants { get; set; } = new List<VideoCallParticipant>();
     }
 }
+

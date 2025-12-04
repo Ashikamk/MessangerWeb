@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
-using MySql.Data.MySqlClient;
+using Npgsql;
 using WebsiteApplication.Services;
 using Microsoft.Extensions.Configuration;
 
@@ -114,13 +114,13 @@ namespace MessangerWeb.Controllers
                     return Json(new { success = false, message = "Receiver not found" });
                 }
 
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
                     var query = @"INSERT INTO messages (sender_email, receiver_email, message, sent_at, is_read) 
                                  VALUES (@SenderEmail, @ReceiverEmail, @Message, NOW(), 0)";
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@SenderEmail", senderEmail);
                         command.Parameters.AddWithValue("@ReceiverEmail", receiverUser.Email);
@@ -283,7 +283,7 @@ namespace MessangerWeb.Controllers
                 var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
                 var isImage = imageExtensions.Contains(Path.GetExtension(file.FileName).ToLower());
 
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
                     string query;
@@ -299,7 +299,7 @@ namespace MessangerWeb.Controllers
                                  VALUES (@SenderEmail, @ReceiverEmail, '', NOW(), 0, @FilePath, @FileName, @FileOriginalName)";
                     }
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@SenderEmail", senderEmail);
                         command.Parameters.AddWithValue("@ReceiverEmail", receiverUser.Email);
@@ -346,7 +346,7 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
                     var query = @"SELECT m.*, 
@@ -359,7 +359,7 @@ namespace MessangerWeb.Controllers
                          OR (m.sender_email = @OtherUserEmail AND m.receiver_email = @CurrentUserEmail)
                          ORDER BY m.sent_at ASC";
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@CurrentUserEmail", currentUserEmail);
                         command.Parameters.AddWithValue("@OtherUserEmail", otherUserEmail);
@@ -406,12 +406,12 @@ namespace MessangerWeb.Controllers
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
                     var query = "SELECT id, firstname, lastname, email, photo FROM students WHERE id = @UserId";
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@UserId", userId);
 
@@ -453,12 +453,12 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
                     string query = "SELECT id, firstname, lastname, email, status, photo FROM students WHERE status = 'Active' AND id != @CurrentUserId";
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@CurrentUserId", currentUserId);
 
@@ -503,11 +503,11 @@ namespace MessangerWeb.Controllers
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
                     var query = "SELECT COUNT(*) FROM students WHERE id = @UserId AND status = 'Active'";
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@UserId", userId);
                         long result = (long)command.ExecuteScalar();
@@ -564,12 +564,12 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
 
                     string query;
-                    MySqlCommand command;
+                    NpgsqlCommand command;
 
                     if (model.ProfileImage != null && model.ProfileImage.Length > 0)
                     {
@@ -579,7 +579,7 @@ namespace MessangerWeb.Controllers
                             var photoData = memoryStream.ToArray();
 
                             query = "UPDATE students SET firstname = @FirstName, lastname = @LastName, photo = @Photo WHERE id = @UserId";
-                            command = new MySqlCommand(query, connection);
+                            command = new NpgsqlCommand(query, connection);
                             command.Parameters.AddWithValue("@FirstName", model.FirstName);
                             command.Parameters.AddWithValue("@LastName", model.LastName);
                             command.Parameters.AddWithValue("@Photo", photoData);
@@ -589,7 +589,7 @@ namespace MessangerWeb.Controllers
                     else
                     {
                         query = "UPDATE students SET firstname = @FirstName, lastname = @LastName WHERE id = @UserId";
-                        command = new MySqlCommand(query, connection);
+                        command = new NpgsqlCommand(query, connection);
                         command.Parameters.AddWithValue("@FirstName", model.FirstName);
                         command.Parameters.AddWithValue("@LastName", model.LastName);
                         command.Parameters.AddWithValue("@UserId", model.UserId);
@@ -654,7 +654,7 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
 
@@ -663,7 +663,7 @@ namespace MessangerWeb.Controllers
                              SELECT LAST_INSERT_ID();";
 
                     int groupId;
-                    using (var command = new MySqlCommand(groupQuery, connection))
+                    using (var command = new NpgsqlCommand(groupQuery, connection))
                     {
                         command.Parameters.AddWithValue("@GroupName", model.GroupName);
                         command.Parameters.AddWithValue("@CreatedBy", userEmail);
@@ -688,7 +688,7 @@ namespace MessangerWeb.Controllers
                               VALUES (@GroupId, @StudentEmail, NOW())";
 
                     // Add current user as member
-                    using (var command = new MySqlCommand(memberQuery, connection))
+                    using (var command = new NpgsqlCommand(memberQuery, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
                         command.Parameters.AddWithValue("@StudentEmail", userEmail);
@@ -698,7 +698,7 @@ namespace MessangerWeb.Controllers
                     // Add selected members
                     foreach (var memberEmail in model.SelectedMembers)
                     {
-                        using (var command = new MySqlCommand(memberQuery, connection))
+                        using (var command = new NpgsqlCommand(memberQuery, connection))
                         {
                             command.Parameters.AddWithValue("@GroupId", groupId);
                             command.Parameters.AddWithValue("@StudentEmail", memberEmail);
@@ -710,7 +710,7 @@ namespace MessangerWeb.Controllers
                     var messageQuery = @"INSERT INTO `group_messages` (`group_id`, `sender_email`, `message`, `sent_at`, `is_read`) 
                                VALUES (@GroupId, @SenderEmail, @Message, NOW(), 1)";
 
-                    using (var command = new MySqlCommand(messageQuery, connection))
+                    using (var command = new NpgsqlCommand(messageQuery, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
                         command.Parameters.AddWithValue("@SenderEmail", userEmail);
@@ -761,7 +761,7 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
 
@@ -770,7 +770,7 @@ namespace MessangerWeb.Controllers
                          VALUES (@GroupId, @SenderEmail, @Message, NOW(), 0);
                          UPDATE `groups` SET last_activity = NOW() WHERE group_id = @GroupId;";
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
                         command.Parameters.AddWithValue("@SenderEmail", senderEmail);
@@ -816,7 +816,7 @@ namespace MessangerWeb.Controllers
                 var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
                 var isImage = imageExtensions.Contains(Path.GetExtension(file.FileName).ToLower());
 
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
                     string query;
@@ -834,7 +834,7 @@ namespace MessangerWeb.Controllers
                          UPDATE `groups` SET last_activity = NOW() WHERE group_id = @GroupId;";
                     }
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
                         command.Parameters.AddWithValue("@SenderEmail", senderEmail);
@@ -880,7 +880,7 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
 
@@ -897,7 +897,7 @@ namespace MessangerWeb.Controllers
                 AND m.sender_email != @UserEmail
                 GROUP BY s.id";
 
-                    using (var command = new MySqlCommand(individualQuery, connection))
+                    using (var command = new NpgsqlCommand(individualQuery, connection))
                     {
                         command.Parameters.AddWithValue("@UserEmail", userEmail);
 
@@ -928,7 +928,7 @@ namespace MessangerWeb.Controllers
                 )
                 GROUP BY g.group_id";
 
-                    using (var command = new MySqlCommand(groupQuery, connection))
+                    using (var command = new NpgsqlCommand(groupQuery, connection))
                     {
                         command.Parameters.AddWithValue("@UserEmail", userEmail);
 
@@ -960,7 +960,7 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
                     var query = @"SELECT g.*, 
@@ -970,7 +970,7 @@ namespace MessangerWeb.Controllers
                          WHERE gm.student_email = @UserEmail
                          ORDER BY g.last_activity DESC, g.group_name ASC";
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@UserEmail", userEmail);
 
@@ -1014,7 +1014,7 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
                     EnsureGroupMessageReadStatusTableExists(connection);
@@ -1032,7 +1032,7 @@ namespace MessangerWeb.Controllers
                          WHERE gm.group_id = @GroupId
                          ORDER BY gm.sent_at ASC";
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
                         command.Parameters.AddWithValue("@CurrentUserEmail", currentUserEmail);
@@ -1135,7 +1135,7 @@ namespace MessangerWeb.Controllers
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
 
@@ -1146,7 +1146,7 @@ namespace MessangerWeb.Controllers
                 AND sender_email = @OtherUserEmail 
                 AND is_read = 0";
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@UserEmail", userEmail);
                         command.Parameters.AddWithValue("@OtherUserEmail", otherUserEmail);
@@ -1167,7 +1167,7 @@ namespace MessangerWeb.Controllers
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
 
@@ -1190,7 +1190,7 @@ namespace MessangerWeb.Controllers
                 )";
 
                     var unreadMessageIds = new List<int>();
-                    using (var command = new MySqlCommand(getUnreadMessagesQuery, connection))
+                    using (var command = new NpgsqlCommand(getUnreadMessagesQuery, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
                         command.Parameters.AddWithValue("@UserEmail", userEmail);
@@ -1214,7 +1214,7 @@ namespace MessangerWeb.Controllers
 
                         foreach (var messageId in unreadMessageIds)
                         {
-                            using (var command = new MySqlCommand(insertQuery, connection))
+                            using (var command = new NpgsqlCommand(insertQuery, connection))
                             {
                                 command.Parameters.AddWithValue("@MessageId", messageId);
                                 command.Parameters.AddWithValue("@UserEmail", userEmail);
@@ -1233,7 +1233,7 @@ namespace MessangerWeb.Controllers
             }
         }
 
-        private void EnsureGroupMessageReadStatusTableExists(MySqlConnection connection)
+        private void EnsureGroupMessageReadStatusTableExists(NpgsqlConnection connection)
         {
             try
             {
@@ -1249,7 +1249,7 @@ namespace MessangerWeb.Controllers
                 FOREIGN KEY (group_message_id) REFERENCES group_messages(message_id) ON DELETE CASCADE
             )";
 
-                using (var command = new MySqlCommand(createTableQuery, connection))
+                using (var command = new NpgsqlCommand(createTableQuery, connection))
                 {
                     command.ExecuteNonQuery();
                 }
@@ -1274,13 +1274,13 @@ namespace MessangerWeb.Controllers
                 var members = new List<object>();
                 string groupCreator = "";
 
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
 
                     // Get group creator
                     var creatorQuery = "SELECT created_by FROM `groups` WHERE group_id = @GroupId";
-                    using (var command = new MySqlCommand(creatorQuery, connection))
+                    using (var command = new NpgsqlCommand(creatorQuery, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
                         var result = command.ExecuteScalar();
@@ -1297,7 +1297,7 @@ namespace MessangerWeb.Controllers
                                  WHERE gm.group_id = @GroupId
                                  ORDER BY gm.joined_at ASC";
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
 
@@ -1349,13 +1349,13 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
 
                     // Check if user is group creator
                     var checkQuery = "SELECT created_by FROM `groups` WHERE group_id = @GroupId";
-                    using (var command = new MySqlCommand(checkQuery, connection))
+                    using (var command = new NpgsqlCommand(checkQuery, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
                         var createdBy = command.ExecuteScalar()?.ToString();
@@ -1368,7 +1368,7 @@ namespace MessangerWeb.Controllers
 
                     // Don't allow removing the creator
                     var deleteQuery = "DELETE FROM group_members WHERE group_id = @GroupId AND student_email = @MemberEmail AND student_email != (SELECT created_by FROM `groups` WHERE group_id = @GroupId)";
-                    using (var command = new MySqlCommand(deleteQuery, connection))
+                    using (var command = new NpgsqlCommand(deleteQuery, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
                         command.Parameters.AddWithValue("@MemberEmail", memberEmail);
@@ -1406,7 +1406,7 @@ namespace MessangerWeb.Controllers
             {
                 var availableMembers = new List<object>();
 
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
 
@@ -1419,7 +1419,7 @@ namespace MessangerWeb.Controllers
                                  AND s.email != @UserEmail
                                  ORDER BY s.firstname, s.lastname";
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
                         command.Parameters.AddWithValue("@UserEmail", userEmail);
@@ -1475,13 +1475,13 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
 
                     // Check if user is group creator
                     var checkQuery = "SELECT created_by FROM `groups` WHERE group_id = @GroupId";
-                    using (var command = new MySqlCommand(checkQuery, connection))
+                    using (var command = new NpgsqlCommand(checkQuery, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", model.GroupId);
                         var createdBy = command.ExecuteScalar()?.ToString();
@@ -1496,7 +1496,7 @@ namespace MessangerWeb.Controllers
 
                     foreach (var memberEmail in model.MemberEmails)
                     {
-                        using (var command = new MySqlCommand(insertQuery, connection))
+                        using (var command = new NpgsqlCommand(insertQuery, connection))
                         {
                             command.Parameters.AddWithValue("@GroupId", model.GroupId);
                             command.Parameters.AddWithValue("@StudentEmail", memberEmail);
@@ -1525,13 +1525,13 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
 
                     // Check if user is group creator
                     var checkQuery = "SELECT created_by FROM `groups` WHERE group_id = @GroupId";
-                    using (var command = new MySqlCommand(checkQuery, connection))
+                    using (var command = new NpgsqlCommand(checkQuery, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", model.GroupId);
                         var createdBy = command.ExecuteScalar()?.ToString();
@@ -1543,7 +1543,7 @@ namespace MessangerWeb.Controllers
                     }
 
                     string query;
-                    MySqlCommand updateCommand;
+                    NpgsqlCommand updateCommand;
 
                     if (model.GroupImage != null && model.GroupImage.Length > 0)
                     {
@@ -1553,7 +1553,7 @@ namespace MessangerWeb.Controllers
                             var imageData = memoryStream.ToArray();
 
                             query = "UPDATE `groups` SET group_name = @GroupName, group_image = @GroupImage, updated_at = NOW() WHERE group_id = @GroupId";
-                            updateCommand = new MySqlCommand(query, connection);
+                            updateCommand = new NpgsqlCommand(query, connection);
                             updateCommand.Parameters.AddWithValue("@GroupName", model.GroupName);
                             updateCommand.Parameters.AddWithValue("@GroupImage", imageData);
                             updateCommand.Parameters.AddWithValue("@GroupId", model.GroupId);
@@ -1562,7 +1562,7 @@ namespace MessangerWeb.Controllers
                     else
                     {
                         query = "UPDATE `groups` SET group_name = @GroupName, updated_at = NOW() WHERE group_id = @GroupId";
-                        updateCommand = new MySqlCommand(query, connection);
+                        updateCommand = new NpgsqlCommand(query, connection);
                         updateCommand.Parameters.AddWithValue("@GroupName", model.GroupName);
                         updateCommand.Parameters.AddWithValue("@GroupId", model.GroupId);
                     }
@@ -1584,7 +1584,7 @@ namespace MessangerWeb.Controllers
                         {
                             // Get existing image if no new image was uploaded
                             var getImageQuery = "SELECT group_image FROM `groups` WHERE group_id = @GroupId";
-                            using (var getImageCommand = new MySqlCommand(getImageQuery, connection))
+                            using (var getImageCommand = new NpgsqlCommand(getImageQuery, connection))
                             {
                                 getImageCommand.Parameters.AddWithValue("@GroupId", model.GroupId);
                                 var result = getImageCommand.ExecuteScalar();
@@ -1622,7 +1622,7 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
 
@@ -1645,7 +1645,7 @@ namespace MessangerWeb.Controllers
                 GROUP BY s.id, s.firstname, s.lastname, s.email, s.status, s.photo
                 ORDER BY last_message_time DESC, s.firstname ASC, s.lastname ASC";
 
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@CurrentUserId", currentUserId);
                         command.Parameters.AddWithValue("@CurrentUserEmail", currentUserEmail);
@@ -1708,9 +1708,10 @@ namespace MessangerWeb.Controllers
 
                 // Save call to database
                 await _videoCallHistoryService.StartCallAsync(
-                    userId,
-                    request.ReceiverId,
+                    callId,
+                    int.Parse(userId),
                     request.ReceiverType,
+                    request.ReceiverId,
                     "Video");
 
                 return Json(new
@@ -1753,7 +1754,7 @@ namespace MessangerWeb.Controllers
         {
             try
             {
-                var success = await _videoCallHistoryService.EndCallAsync(
+                var success = await _videoCallHistoryService.UpdateCallStatusAsync(
                     request.CallId, request.Status);
 
                 return Json(new { success = success });
@@ -1806,7 +1807,7 @@ namespace MessangerWeb.Controllers
 
         private async Task SaveIndividualCallDurationMessage(SaveCallDurationRequest request, string userEmail)
         {
-            using (var connection = new MySqlConnection(connectionString))
+            using (var connection = new NpgsqlConnection(connectionString))
             {
                 await connection.OpenAsync();
 
@@ -1823,7 +1824,7 @@ namespace MessangerWeb.Controllers
                 var query = @"INSERT INTO messages (sender_email, receiver_email, message, sent_at, is_read, is_call_message, call_duration, call_status) 
                      VALUES (@SenderEmail, @ReceiverEmail, @Message, NOW(), 0, 1, @CallDuration, @CallStatus)";
 
-                using (var command = new MySqlCommand(query, connection))
+                using (var command = new NpgsqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@SenderEmail", userEmail);
                     command.Parameters.AddWithValue("@ReceiverEmail", receiverEmail);
@@ -1837,12 +1838,12 @@ namespace MessangerWeb.Controllers
 
         private async Task<string> GetUserEmailById(string userId)
         {
-            using (var connection = new MySqlConnection(connectionString))
+            using (var connection = new NpgsqlConnection(connectionString))
             {
                 await connection.OpenAsync();
 
                 var query = "SELECT email FROM students WHERE id = @UserId";
-                using (var command = new MySqlCommand(query, connection))
+                using (var command = new NpgsqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@UserId", userId);
                     var result = await command.ExecuteScalarAsync();
@@ -1854,7 +1855,7 @@ namespace MessangerWeb.Controllers
 
         private async Task SaveGroupCallDurationMessage(SaveCallDurationRequest request, string userEmail, string userName)
         {
-            using (var connection = new MySqlConnection(connectionString))
+            using (var connection = new NpgsqlConnection(connectionString))
             {
                 await connection.OpenAsync();
 
@@ -1864,7 +1865,7 @@ namespace MessangerWeb.Controllers
                 var query = @"INSERT INTO group_messages (group_id, sender_email, message, sent_at, is_read, is_call_message, call_duration, call_status) 
                      VALUES (@GroupId, @SenderEmail, @Message, NOW(), 0, 1, @CallDuration, @CallStatus)";
 
-                using (var command = new MySqlCommand(query, connection))
+                using (var command = new NpgsqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@GroupId", request.GroupId);
                     command.Parameters.AddWithValue("@SenderEmail", userEmail);
@@ -1876,7 +1877,7 @@ namespace MessangerWeb.Controllers
 
                 // Update group last activity
                 var updateQuery = "UPDATE `groups` SET last_activity = NOW() WHERE group_id = @GroupId";
-                using (var command = new MySqlCommand(updateQuery, connection))
+                using (var command = new NpgsqlCommand(updateQuery, connection))
                 {
                     command.Parameters.AddWithValue("@GroupId", request.GroupId);
                     await command.ExecuteNonQueryAsync();
@@ -1927,7 +1928,7 @@ namespace MessangerWeb.Controllers
                 if (string.IsNullOrEmpty(userId))
                     return Json(new { success = false, message = "User not authenticated" });
 
-                var callHistory = await _videoCallHistoryService.GetCallHistoryAsync(userId);
+                var callHistory = await _videoCallHistoryService.GetCallHistoryAsync(int.Parse(userId));
                 return Json(new { success = true, callHistory = callHistory });
             }
             catch (Exception ex)
