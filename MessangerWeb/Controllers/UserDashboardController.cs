@@ -12,25 +12,28 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
 using WebsiteApplication.Services;
+using Microsoft.Extensions.Configuration;
 
 namespace MessangerWeb.Controllers
 {
     public class UserDashboardController : Controller
     {
-        private readonly string connectionString = "server=localhost;database=riyoceli_employees_management;uid=riyoceli_employees_management;pwd=2&6u4TWMsFU&;";
+        private readonly string connectionString;
         private readonly string fileUploadPath = "wwwroot/uploads/chatfiles/";
         private readonly IVideoCallHistoryService _videoCallHistoryService;
         private readonly ILogger<UserDashboardController> _logger;
         private readonly IVideoCallParticipantService _videoCallParticipantService;
 
         public UserDashboardController(
-    IVideoCallHistoryService videoCallHistoryService,
-    IVideoCallParticipantService videoCallParticipantService,
-    ILogger<UserDashboardController> logger)
+            IVideoCallHistoryService videoCallHistoryService,
+            IVideoCallParticipantService videoCallParticipantService,
+            ILogger<UserDashboardController> logger,
+            IConfiguration configuration)
         {
             _videoCallHistoryService = videoCallHistoryService;
             _videoCallParticipantService = videoCallParticipantService;
             _logger = logger;
+            connectionString = configuration.GetConnectionString("DefaultConnection");
         }
 
         public IActionResult Index(string selectedUserId = null, int? selectedGroupId = null)

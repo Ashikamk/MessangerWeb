@@ -2,12 +2,18 @@
 using MessangerWeb.Models;
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
+using Microsoft.Extensions.Configuration;
 
 namespace MessangerWeb.Controllers
 {
     public class StudentController : Controller
     {
-        private readonly string connectionString = "server=localhost;database=riyoceli_employees_management;uid=riyoceli_employees_management;pwd=\"2&6u4TWMsFU&\";";
+        private readonly string connectionString;
+
+        public StudentController(IConfiguration configuration)
+        {
+            connectionString = configuration.GetConnectionString("DefaultConnection");
+        }
 
         // GET: /Student/Add
         public IActionResult Add()

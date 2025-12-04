@@ -2,6 +2,7 @@
 using MessangerWeb.Models;
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
+using Microsoft.Extensions.Configuration;
 
 namespace MessangerWeb.Controllers
 {
@@ -9,7 +10,12 @@ namespace MessangerWeb.Controllers
     {
         private const string AdminEmail = "admin";
         private const string AdminPassword = "123";
-        private readonly string connectionString = "server=localhost;database=riyoceli_employees_management;uid=riyoceli_employees_management;pwd=2&6u4TWMsFU&;";
+        private readonly string connectionString;
+
+        public AccountController(IConfiguration configuration)
+        {
+            connectionString = configuration.GetConnectionString("DefaultConnection");
+        }
 
         [HttpGet]
         public IActionResult AdminLogin()
