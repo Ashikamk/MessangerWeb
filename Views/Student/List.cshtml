@@ -1,0 +1,183 @@
+﻿@model IEnumerable<MessangerWeb.Models.Student>
+@{
+    ViewData["Title"] = "Student List";
+    Layout = "_Layout"; // Use the layout with sticky navbar
+}
+
+<style>
+    body {
+        background-color: lightgreen
+    }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.85);
+            z-index: -1;
+        }
+
+    .page-title {
+        text-align: center;
+        margin: 30px 0;
+        color: #2c3e50;
+        font-weight: 700;
+        font-size: 2.5rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .table-container {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        padding: 25px;
+        margin: 20px auto;
+        overflow-x: auto;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+        .table thead th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            border: none;
+            padding: 15px;
+        }
+
+        .table tbody tr {
+            transition: all 0.3s ease;
+        }
+
+            .table tbody tr:hover {
+                background-color: #f8f9fa;
+                transform: scale(1.01);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            }
+
+        .table tbody td {
+            padding: 12px;
+            vertical-align: middle;
+        }
+
+    .btn-info {
+        background: linear-gradient(135deg, #36d1dc 0%, #5b86e5 100%);
+        border: none;
+        transition: all 0.3s ease;
+    }
+
+        .btn-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(54, 209, 220, 0.4);
+        }
+
+    .btn-warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border: none;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+            color: white;
+        }
+
+    .badge {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .alert {
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+</style>
+
+<div class="container-fluid">
+    <h1 class="page-title">User List</h1>
+
+    @if (ViewBag.Error != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @ViewBag.Error
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="table-container">
+        <table class="table table-bordered table-hover table-striped align-middle text-center">
+            <thead class="table-dark">
+                <tr>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Gender</th>
+                    <th>Date of Birth</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Education</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    foreach (var student in Model)
+                    {
+                        <tr>
+                            <td>@student.FirstName</td>
+                            <td>@student.LastName</td>
+                            <td>@student.Gender</td>
+                            <td>@(student.DateOfBirth?.ToString("yyyy-MM-dd") ?? "—")</td>
+                            <td>@student.Email</td>
+                            <td>@student.Phone</td>
+                            <td>@student.Education</td>
+                            <td>
+                                <span class="badge @(student.Status == "Active" ? "bg-success" : "bg-warning")">
+                                    @(string.IsNullOrEmpty(student.Status) ? "Active" : student.Status)
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="@Url.Action("View", "Student", new { id = student.Id })" class="btn btn-info btn-sm me-1">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    <a href="@Url.Action("Edit", "Student", new { id = student.Id })" class="btn btn-warning btn-sm">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">
+                            <i class="fas fa-users fa-3x mb-3"></i>
+                            <br>
+                            No students found.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

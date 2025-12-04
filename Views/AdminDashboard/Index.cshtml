@@ -1,0 +1,1819 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(rgba(248, 249, 250, 0.95), rgba(248, 249, 250, 0.95));
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Full Screen Navbar - Fixed */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.8);
+            padding: 12px 0;
+        }
+
+        .navbar-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .navbar-left, .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .navbar-center {
+            flex: 1;
+            text-align: center;
+        }
+
+        /* Enhanced Nav Links */
+        .navbar-left .navbar-brand,
+        .navbar-left .nav-link {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0;
+            padding: 10px 16px;
+            color: #2c3e50;
+            text-decoration: none;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: transparent;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .navbar-left .navbar-brand:hover,
+        .navbar-left .nav-link:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Enhanced Dropdown */
+        .dropdown-wrapper {
+            position: relative;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border-radius: 12px;
+            padding: 12px 0;
+            min-width: 180px;
+            display: none;
+            margin-top: 8px;
+            z-index: 1001;
+            border: 1px solid rgba(255,255,255,0.8);
+            backdrop-filter: blur(10px);
+        }
+
+            .dropdown-menu.show {
+                display: block;
+                animation: fadeIn 0.3s ease;
+            }
+
+        .dropdown-item {
+            padding: 12px 20px;
+            font-weight: 500;
+            color: #2c3e50;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+            transition: all 0.3s ease;
+            border-radius: 6px;
+            margin: 0 8px;
+        }
+
+            .dropdown-item:hover {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                transform: translateX(5px);
+            }
+
+        /* Enhanced Logout Button */
+        .btn-logout {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+            .btn-logout:hover {
+                background: linear-gradient(135deg, #ff5252 0%, #e53935 100%);
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+                color: white;
+            }
+
+        /* Welcome Content */
+        .welcome-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: calc(100vh - 80px);
+            text-align: center;
+            margin-top: 80px;
+        }
+
+        .welcome-text {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.1);
+            line-height: 1.2;
+        }
+
+        /* Content Area */
+        .content-area {
+            margin-top: 80px;
+            padding: 30px;
+            width: 100%;
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            display: none;
+        }
+
+            .content-area.active {
+                display: block;
+            }
+
+        /* Student List Styling */
+        .student-list-container {
+            background-color: lightgreen;
+            min-height: calc(100vh - 80px);
+            position: relative;
+            padding: 0;
+        }
+
+            .student-list-container::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(255, 255, 255, 0.85);
+                z-index: 0;
+            }
+
+        .page-title {
+            text-align: center;
+            margin: 0;
+            padding: 20px 0;
+            color: #2c3e50;
+            font-weight: 700;
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+            z-index: 1;
+        }
+
+        .table-container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            padding: 25px;
+            margin: 20px;
+            overflow-x: auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .table {
+            margin-bottom: 0;
+            width: 100%;
+        }
+
+            .table thead th {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                font-weight: 600;
+                text-transform: uppercase;
+                font-size: 0.9rem;
+                letter-spacing: 0.5px;
+                border: none;
+                padding: 15px;
+            }
+
+            .table tbody tr {
+                transition: all 0.3s ease;
+            }
+
+                .table tbody tr:hover {
+                    background-color: #f8f9fa;
+                    transform: scale(1.01);
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                }
+
+            .table tbody td {
+                padding: 12px;
+                vertical-align: middle;
+            }
+
+        .btn-info {
+            background: linear-gradient(135deg, #36d1dc 0%, #5b86e5 100%);
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+            .btn-info:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(54, 209, 220, 0.4);
+            }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+            .btn-warning:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+                color: white;
+            }
+
+        .badge {
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .alert {
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 1;
+            margin: 20px;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* Add User Form Styling */
+        .add-user-container {
+            background-color: lightblue;
+            min-height: calc(100vh - 80px);
+            position: relative;
+            padding: 0;
+        }
+
+            .add-user-container::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(255, 255, 255, 0.85);
+                z-index: -1;
+            }
+
+        .form-container {
+            max-width: 1200px;
+            margin: 0 auto 30px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            padding: 30px 40px;
+        }
+
+        .form-section-title {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            padding-left: 12px;
+            padding-bottom: 8px;
+            border-left: 4px solid #667eea;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+            .form-section-title:first-of-type {
+                margin-top: 0;
+            }
+
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 10px 15px;
+            transition: all 0.3s ease;
+        }
+
+            .form-control:focus, .form-select:focus {
+                border-color: #667eea;
+                box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            }
+
+            .form-control::placeholder {
+                color: #adb5bd;
+                font-style: italic;
+            }
+
+        .text-danger {
+            font-size: 0.875rem;
+            margin-top: 5px;
+        }
+
+        .required-field {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .hobbies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .hobby-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+            .hobby-checkbox:hover {
+                background-color: #e9ecef;
+                transform: translateX(3px);
+                border-color: #667eea;
+            }
+
+            .hobby-checkbox input[type="checkbox"] {
+                width: 18px;
+                height: 18px;
+                margin-right: 10px;
+                cursor: pointer;
+                accent-color: #667eea;
+            }
+
+            .hobby-checkbox label {
+                margin: 0;
+                cursor: pointer;
+                user-select: none;
+                flex: 1;
+            }
+
+        .photo-upload-container {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background-color: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+
+            .photo-upload-container:hover {
+                background-color: #e9ecef;
+                border-color: #764ba2;
+            }
+
+            .photo-upload-container input[type="file"] {
+                border: none;
+                background: transparent;
+            }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px 35px;
+            font-weight: 600;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+            .btn-primary:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            border: none;
+            padding: 12px 35px;
+            font-weight: 600;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+            .btn-secondary:hover {
+                background-color: #5a6268;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+            }
+
+        .form-actions {
+            text-align: center;
+            padding-top: 25px;
+            margin-top: 30px;
+            border-top: 2px solid #e9ecef;
+        }
+
+        .alert {
+            border-radius: 8px;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .form-text {
+            color: #6c757d;
+            font-size: 0.875rem;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .row {
+            margin-bottom: 0;
+        }
+
+        .mb-3 {
+            margin-bottom: 1rem !important;
+        }
+
+        /* View User Details Styling */
+        .view-user-container {
+            background-image: url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: calc(100vh - 80px);
+            position: relative;
+            padding: 20px 0;
+        }
+
+            .view-user-container::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(255, 255, 255, 0.85);
+                z-index: -1;
+            }
+
+        .details-card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            max-width: 900px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+
+            .card-header h2 {
+                margin: 0;
+                font-weight: 600;
+                font-size: 1.8rem;
+            }
+
+        .card-body-wrapper {
+            padding: 30px;
+        }
+
+        .photo-section {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .photo-container {
+            display: inline-block;
+            padding: 10px;
+            border: 3px solid #667eea;
+            border-radius: 12px;
+            background-color: #f8f9fa;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+            .photo-container img {
+                max-width: 200px;
+                max-height: 200px;
+                border-radius: 8px;
+            }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .detail-item {
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+            .detail-item:hover {
+                transform: translateX(5px);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            }
+
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            color: #2c3e50;
+            font-size: 1rem;
+            word-wrap: break-word;
+        }
+
+        .card-footer {
+            padding: 20px;
+            background-color: #f8f9fa;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .btn-back {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 10px 30px;
+            font-weight: 500;
+            color: white;
+            border-radius: 25px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+            .btn-back:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+                color: white;
+            }
+
+        /* Edit User Form Styling */
+        .edit-user-container {
+            background-color: lightblue;
+            min-height: calc(100vh - 80px);
+            position: relative;
+            padding: 20px 0;
+        }
+
+            .edit-user-container::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(255, 255, 255, 0.9);
+                z-index: -1;
+            }
+
+        .edit-container {
+            max-width: 800px;
+            margin: 30px auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+            .page-header h2 {
+                color: #667eea;
+                font-weight: 600;
+                margin: 0;
+            }
+
+        /* Animation */
+
+    </style>
+</head>
+<body>
+
+    <!-- Full Screen Navbar - Fixed -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <!-- Left side -->
+            <div class="navbar-left">
+                <a class="navbar-brand" href="#" onclick="showWelcome()">
+                    <i class="fas fa-home me-2"></i>Home
+                </a>
+                <!-- User dropdown -->
+                <div class="dropdown-wrapper">
+                    <a class="nav-link" id="userBtn" onclick="toggleDropdown()">
+                        <i class="fas fa-user"></i>User
+                    </a>
+                    <div class="dropdown-menu" id="userDropdown">
+                        <a class="dropdown-item" href="#" onclick="showUserList()">
+                            <i class="fas fa-list me-2"></i>List User
+                        </a>
+                        <a class="dropdown-item" href="#" onclick="showAddUser()">
+                            <i class="fas fa-user-plus me-2"></i>Add User
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right side -->
+            <div class="navbar-right">
+                <a href="/Account/AdminLogin" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Welcome Content -->
+    <div class="welcome-content" id="welcomeContent">
+        <div>
+            <div class="welcome-text">
+                Welcome, Admin !
+            </div>
+        </div>
+    </div>
+
+    <!-- Student List Content -->
+    <div class="content-area student-list-container" id="studentListContent">
+        <h1 class="page-title">User List</h1>
+
+        <div id="errorAlert" class="alert alert-danger alert-dismissible fade show" role="alert" style="display: none;">
+            <span id="errorMessage"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading student data...</p>
+        </div>
+
+        <div class="table-container">
+            <table class="table table-bordered table-hover table-striped align-middle text-center">
+                <thead class="table-dark">
+                    <tr>
+                        <th>First Name</th>
+                        <th>Last Name</th>
+                        <th>Gender</th>
+                        <th>Date of Birth</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Education</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="studentTableBody">
+                    <!-- Student data will be loaded here from database -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add User Content -->
+    <div class="content-area add-user-container" id="addUserContent">
+        <h1 class="page-title">Add New User</h1>
+
+        <div class="form-container">
+            <div id="successAlert" class="alert alert-success alert-dismissible fade show" role="alert" style="display: none;">
+                <i class="fas fa-check-circle me-2"></i>
+                <span id="successMessage"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+
+            <div id="errorAlertAddUser" class="alert alert-danger" role="alert" style="display: none;">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Please fix the following errors:</strong>
+                <ul id="errorList" class="mb-0 mt-2"></ul>
+            </div>
+
+            <form id="addUserForm" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <h4 class="form-section-title"><i class="fas fa-user me-2"></i>Personal Information</h4>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="FirstName" class="form-label">First Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="FirstName" name="FirstName" placeholder="Enter first name" required>
+                            <span class="text-danger" id="FirstNameError"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="LastName" class="form-label">Last Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="LastName" name="LastName" placeholder="Enter last name" required>
+                            <span class="text-danger" id="LastNameError"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="Gender" class="form-label">Gender <span class="text-danger">*</span></label>
+                            <select class="form-select" id="Gender" name="Gender" required>
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <span class="text-danger" id="GenderError"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="DateOfBirth" class="form-label">Date of Birth <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="DateOfBirth" name="DateOfBirth" required>
+                            <span class="text-danger" id="DateOfBirthError"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <h4 class="form-section-title"><i class="fas fa-envelope me-2"></i>Contact Information</h4>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="Email" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="Email" name="Email" placeholder="example@email.com" required>
+                            <span class="text-danger" id="EmailError"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="Phone" class="form-label">Phone <span class="text-danger">*</span></label>
+                            <input type="tel" class="form-control" id="Phone" name="Phone" placeholder="Enter phone number" required>
+                            <span class="text-danger" id="PhoneError"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <h4 class="form-section-title"><i class="fas fa-graduation-cap me-2"></i>Education & Status</h4>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="Education" class="form-label">Education <span class="text-danger">*</span></label>
+                            <select class="form-select" id="Education" name="Education" required>
+                                <option value="">Select Qualification</option>
+                                <option value="High School">High School</option>
+                                <option value="Bachelor">Bachelor</option>
+                                <option value="Master">Master</option>
+                                <option value="PhD">PhD</option>
+                            </select>
+                            <span class="text-danger" id="EducationError"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="Status" class="form-label">Status</label>
+                            <select class="form-select" id="Status" name="Status">
+                                <option value="">Select Status</option>
+                                <option value="Active" selected>Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label"><i class="fas fa-heart me-2"></i>Hobbies</label>
+                    <div class="hobbies-grid">
+                        <div class="hobby-checkbox">
+                            <input class="form-check-input" type="checkbox" name="SelectedHobbies" value="Reading" id="hobby_Reading">
+                            <label class="form-check-label" for="hobby_Reading">Reading</label>
+                        </div>
+                        <div class="hobby-checkbox">
+                            <input class="form-check-input" type="checkbox" name="SelectedHobbies" value="Sports" id="hobby_Sports">
+                            <label class="form-check-label" for="hobby_Sports">Sports</label>
+                        </div>
+                        <div class="hobby-checkbox">
+                            <input class="form-check-input" type="checkbox" name="SelectedHobbies" value="Music" id="hobby_Music">
+                            <label class="form-check-label" for="hobby_Music">Music</label>
+                        </div>
+                        <div class="hobby-checkbox">
+                            <input class="form-check-input" type="checkbox" name="SelectedHobbies" value="Travel" id="hobby_Travel">
+                            <label class="form-check-label" for="hobby_Travel">Travel</label>
+                        </div>
+                        <div class="hobby-checkbox">
+                            <input class="form-check-input" type="checkbox" name="SelectedHobbies" value="Cooking" id="hobby_Cooking">
+                            <label class="form-check-label" for="hobby_Cooking">Cooking</label>
+                        </div>
+                        <div class="hobby-checkbox">
+                            <input class="form-check-input" type="checkbox" name="SelectedHobbies" value="Gaming" id="hobby_Gaming">
+                            <label class="form-check-label" for="hobby_Gaming">Gaming</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label"><i class="fas fa-camera me-2"></i>Profile Photo</label>
+                    <div class="photo-upload-container">
+                        <i class="fas fa-cloud-upload-alt fa-2x mb-2" style="color: #667eea;"></i>
+                        <input type="file" name="PhotoFile" class="form-control" accept="image/*">
+                        <small class="form-text text-muted">Accepted formats: JPG, PNG, GIF (Max 5MB)</small>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="Password" class="form-label"><i class="fas fa-lock me-2"></i>Password <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="Password" name="Password" placeholder="Enter numeric password" pattern="[0-9]*" inputmode="numeric" required>
+                    <span class="text-danger" id="PasswordError"></span>
+                </div>
+
+                <h4 class="form-section-title"><i class="fas fa-map-marker-alt me-2"></i>Address Information</h4>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="Country" class="form-label">Country <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="Country" name="Country" placeholder="Enter country" required>
+                            <span class="text-danger" id="CountryError"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="State" class="form-label">State <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="State" name="State" placeholder="Enter state" required>
+                            <span class="text-danger" id="StateError"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="City" class="form-label">City <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="City" name="City" placeholder="Enter city" required>
+                            <span class="text-danger" id="CityError"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="PostalCode" class="form-label">Postal Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="PostalCode" name="PostalCode" placeholder="Enter postal code" required>
+                            <span class="text-danger" id="PostalCodeError"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="Address" class="form-label">Full Address <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="Address" name="Address" rows="3" placeholder="Enter complete address" required></textarea>
+                    <span class="text-danger" id="AddressError"></span>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary me-3">
+                        <i class="fas fa-save me-2"></i> Add User
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="showUserList()">
+                        <i class="fas fa-list me-2"></i> View List
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View User Details Content -->
+    <div class="content-area view-user-container" id="viewUserContent">
+        <div class="details-card">
+            <div class="card-header">
+                <h2>User Details</h2>
+            </div>
+
+            <div class="card-body-wrapper">
+                <!-- Photo Section -->
+                <div class="photo-section">
+                    <div class="photo-container">
+                        <div id="userPhotoContainer" style="width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; background: #e9ecef; border-radius: 8px;">
+                            <span class="text-muted">No Photo</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Details Grid -->
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <div class="detail-label" style="font-weight: bold">First Name</div>
+                        <div class="detail-value" id="viewFirstName">-</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label" style="font-weight: bold">Last Name</div>
+                        <div class="detail-value" id="viewLastName">-</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label" style="font-weight: bold">Gender</div>
+                        <div class="detail-value" id="viewGender">-</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label" style="font-weight: bold">Date of Birth</div>
+                        <div class="detail-value" id="viewDateOfBirth">-</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label" style="font-weight: bold">Email</div>
+                        <div class="detail-value" id="viewEmail">-</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label" style="font-weight: bold">Phone</div>
+                        <div class="detail-value" id="viewPhone">-</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label" style="font-weight: bold">Education</div>
+                        <div class="detail-value" id="viewEducation">-</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label" style="font-weight: bold">Country</div>
+                        <div class="detail-value" id="viewCountry">-</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label" style="font-weight: bold">State</div>
+                        <div class="detail-value" id="viewState">-</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label" style="font-weight: bold">City</div>
+                        <div class="detail-value" id="viewCity">-</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label" style="font-weight: bold">Address</div>
+                        <div class="detail-value" id="viewAddress">-</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label" style="font-weight: bold">Postal Code</div>
+                        <div class="detail-value" id="viewPostalCode">-</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label" style="font-weight: bold">Hobbies</div>
+                        <div class="detail-value" id="viewHobbies">-</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label" style="font-weight: bold"> Status</div>
+                        <div class="detail-value" id="viewStatus">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <button class="btn btn-back" onclick="showUserList()">Back to List</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Content -->
+    <div class="content-area edit-user-container" id="editUserContent">
+        <div class="edit-container">
+            <div class="page-header"><h2>Edit User</h2></div>
+
+            <div id="editSuccessAlert" class="alert alert-success" role="alert" style="display: none;">
+                <span id="editSuccessMessage"></span>
+            </div>
+
+            <form id="editUserForm" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="editId" name="Id" />
+
+                <!-- Basic Details -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="editFirstName" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="editFirstName" name="FirstName">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="editLastName" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="editLastName" name="LastName">
+                    </div>
+                </div>
+
+                <!-- Gender and DOB -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="editGender">Gender</label>
+                        <select class="form-select" id="editGender" name="Gender">
+                            <option value="">Select Gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="editDateOfBirth">Date of Birth</label>
+                        <input type="date" class="form-control" id="editDateOfBirth" name="DateOfBirth">
+                    </div>
+                </div>
+
+                <!-- Contact Info -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="editEmail">Email</label>
+                        <input type="email" class="form-control" id="editEmail" name="Email">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="editPhone">Phone</label>
+                        <input type="tel" class="form-control" id="editPhone" name="Phone">
+                    </div>
+                </div>
+
+                <!-- Education & Status -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="editEducation">Education</label>
+                        <select class="form-select" id="editEducation" name="Education">
+                            <option value="">Select Qualification</option>
+                            <option value="High School">High School</option>
+                            <option value="Bachelor">Bachelor</option>
+                            <option value="Master">Master</option>
+                            <option value="PhD">PhD</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="editStatus">Status</label>
+                        <select class="form-select" id="editStatus" name="Status">
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Hobbies -->
+                <div class="mb-3">
+                    <label class="form-label">Hobbies</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <div>
+                            <input type="checkbox" name="SelectedHobbies" value="Reading" id="editHobby_Reading">
+                            <label for="editHobby_Reading">Reading</label>
+                        </div>
+                        <div>
+                            <input type="checkbox" name="SelectedHobbies" value="Sports" id="editHobby_Sports">
+                            <label for="editHobby_Sports">Sports</label>
+                        </div>
+                        <div>
+                            <input type="checkbox" name="SelectedHobbies" value="Music" id="editHobby_Music">
+                            <label for="editHobby_Music">Music</label>
+                        </div>
+                        <div>
+                            <input type="checkbox" name="SelectedHobbies" value="Travel" id="editHobby_Travel">
+                            <label for="editHobby_Travel">Travel</label>
+                        </div>
+                        <div>
+                            <input type="checkbox" name="SelectedHobbies" value="Cooking" id="editHobby_Cooking">
+                            <label for="editHobby_Cooking">Cooking</label>
+                        </div>
+                        <div>
+                            <input type="checkbox" name="SelectedHobbies" value="Gaming" id="editHobby_Gaming">
+                            <label for="editHobby_Gaming">Gaming</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Photo -->
+                <div class="mb-3">
+                    <label>Photo</label>
+                    <div id="editPhotoContainer" class="mb-2"></div>
+                    <input type="file" name="PhotoFile" class="form-control" />
+                </div>
+
+                <!-- Password -->
+                <div class="mb-3">
+                    <label>Password</label>
+                    <input type="number" name="Password" class="form-control" placeholder="Enter password (leave blank to keep current)" pattern="[0-9]*" inputmode="numeric" />
+                    <small class="text-muted">Leave blank to keep current password</small>
+                </div>
+
+                <!-- Address -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="editCountry">Country</label>
+                        <input type="text" class="form-control" id="editCountry" name="Country">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="editState">State</label>
+                        <input type="text" class="form-control" id="editState" name="State">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="editCity">City</label>
+                        <input type="text" class="form-control" id="editCity" name="City">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="editPostalCode">Postal Code</label>
+                        <input type="text" class="form-control" id="editPostalCode" name="PostalCode">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="editAddress">Address</label>
+                    <textarea class="form-control" id="editAddress" name="Address" rows="2"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">Update</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Global variable to store current student ID
+        let currentStudentId = null;
+
+        function toggleDropdown() {
+            const dropdown = document.getElementById('userDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('userDropdown');
+            const userBtn = document.getElementById('userBtn');
+
+            if (!dropdown.contains(event.target) && !userBtn.contains(event.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        // Function to show welcome content
+        function showWelcome() {
+            document.getElementById('welcomeContent').style.display = 'flex';
+            document.getElementById('studentListContent').classList.remove('active');
+            document.getElementById('addUserContent').classList.remove('active');
+            document.getElementById('viewUserContent').classList.remove('active');
+            document.getElementById('editUserContent').classList.remove('active');
+        }
+
+        // Function to show user list
+        function showUserList() {
+            document.getElementById('welcomeContent').style.display = 'none';
+            document.getElementById('studentListContent').classList.add('active');
+            document.getElementById('addUserContent').classList.remove('active');
+            document.getElementById('viewUserContent').classList.remove('active');
+            document.getElementById('editUserContent').classList.remove('active');
+
+            // Load student data from database
+            loadStudentDataFromDatabase();
+
+            toggleDropdown(); // Close dropdown after selection
+        }
+
+        // Function to show add user form
+        function showAddUser() {
+            document.getElementById('welcomeContent').style.display = 'none';
+            document.getElementById('studentListContent').classList.remove('active');
+            document.getElementById('addUserContent').classList.add('active');
+            document.getElementById('viewUserContent').classList.remove('active');
+            document.getElementById('editUserContent').classList.remove('active');
+
+            // Reset form
+            document.getElementById('addUserForm').reset();
+            toggleDropdown(); // Close dropdown after selection
+        }
+
+        // Function to show view user details
+        function showViewUser(studentId) {
+            currentStudentId = studentId;
+            document.getElementById('welcomeContent').style.display = 'none';
+            document.getElementById('studentListContent').classList.remove('active');
+            document.getElementById('addUserContent').classList.remove('active');
+            document.getElementById('viewUserContent').classList.add('active');
+            document.getElementById('editUserContent').classList.remove('active');
+
+            // Load student data for viewing
+            loadStudentDataForView(studentId);
+        }
+
+        // Function to show edit user form
+        function showEditUser(studentId) {
+            currentStudentId = studentId;
+            document.getElementById('welcomeContent').style.display = 'none';
+            document.getElementById('studentListContent').classList.remove('active');
+            document.getElementById('addUserContent').classList.remove('active');
+            document.getElementById('viewUserContent').classList.remove('active');
+            document.getElementById('editUserContent').classList.add('active');
+
+            // Load student data for editing
+            loadStudentDataForEdit(studentId);
+        }
+
+                        // Handle form submission for add user - WITH PROPER ERROR HANDLING
+        document.getElementById('addUserForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Hide previous alerts
+            document.getElementById('successAlert').style.display = 'none';
+            document.getElementById('errorAlertAddUser').style.display = 'none';
+
+            // Clear previous error messages
+            clearErrorMessages();
+
+            const formData = new FormData(this);
+
+            // Get selected hobbies
+            const hobbies = [];
+            document.querySelectorAll('#addUserForm input[name="SelectedHobbies"]:checked').forEach(checkbox => {
+                hobbies.push(checkbox.value);
+            });
+
+            // Add hobbies to form data
+            hobbies.forEach(hobby => {
+                formData.append('SelectedHobbies', hobby);
+            });
+
+            // Submit form to backend
+            submitStudentForm(formData);
+        });
+
+        function submitStudentForm(formData) {
+            // Show loading state
+            const submitBtn = document.querySelector('#addUserForm button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Adding User...';
+            submitBtn.disabled = true;
+
+            console.log('Submitting form data...');
+
+            fetch('/Student/Add', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response redirected:', response.redirected);
+
+                if (response.redirected) {
+                    // If redirected, check the redirect URL
+                    const redirectUrl = response.url;
+                    console.log('Redirected to:', redirectUrl);
+
+                    if (redirectUrl.includes('/Student/Add')) {
+                        // This is the success case - form was submitted and redirected back to Add page
+                        showAddUserSuccess();
+                        return;
+                    }
+                }
+
+                if (response.ok) {
+                    return response.text();
+                } else {
+                    throw new Error(`Server returned ${response.status} status`);
+                }
+            })
+            .then(html => {
+                if (html) {
+                    console.log('Received HTML response');
+                    // If we get HTML back, it means there was an error and we're returned to the form
+                    checkForServerErrors(html);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error adding user: ' + error.message);
+            })
+            .finally(() => {
+                // Restore button state
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        }
+
+        function checkForServerErrors(html) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            // Check for success message in TempData
+            const successAlert = doc.querySelector('.alert-success');
+            if (successAlert && successAlert.textContent.includes('successfully')) {
+                showAddUserSuccess();
+                return;
+            }
+
+            // Check for error message in TempData
+            const errorAlert = doc.querySelector('.alert-danger');
+            if (errorAlert) {
+                alert('Error: ' + errorAlert.textContent);
+                return;
+            }
+
+            // Check for validation errors
+            const validationErrors = doc.querySelector('.validation-summary-errors');
+            if (validationErrors) {
+                const errors = validationErrors.textContent.trim();
+                if (errors) {
+                    alert('Validation errors: ' + errors);
+                    return;
+                }
+            }
+
+            // If no specific errors found but we're here, something went wrong
+            alert('User was not added. Please check the form data and try again.');
+        }
+
+        // Function to show success message for add user
+        function showAddUserSuccess() {
+            // Show success alert
+            document.getElementById('successMessage').textContent = 'User added successfully!';
+            document.getElementById('successAlert').style.display = 'block';
+
+            // Reset form
+            document.getElementById('addUserForm').reset();
+
+            // Scroll to top to show the success message
+            document.getElementById('addUserContent').scrollTo(0, 0);
+
+            console.log('Success message shown - user should be in database');
+        }
+
+        // Clear all error messages
+        function clearErrorMessages() {
+            const errorElements = document.querySelectorAll('.text-danger');
+            errorElements.forEach(element => {
+                if (element) {
+                    element.textContent = '';
+                }
+            });
+        }
+
+        // Handle form submission for edit user
+               document.getElementById('editUserForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Hide previous alerts
+            document.getElementById('editSuccessAlert').style.display = 'none';
+
+            const formData = new FormData(this);
+
+            // Get selected hobbies
+            const hobbies = [];
+            document.querySelectorAll('#editUserForm input[name="SelectedHobbies"]:checked').forEach(checkbox => {
+                hobbies.push(checkbox.value);
+            });
+
+            // Clear existing hobbies and add current ones
+            formData.delete('SelectedHobbies');
+            hobbies.forEach(hobby => {
+                formData.append('SelectedHobbies', hobby);
+            });
+
+            // Submit form to backend
+            submitEditForm(formData);
+        });
+
+        function submitEditForm(formData) {
+            const studentId = document.getElementById('editId').value;
+
+            // Show loading state
+            const submitBtn = document.querySelector('#editUserForm button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Updating...';
+            submitBtn.disabled = true;
+
+            fetch(`/Student/Edit/${studentId}`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'RequestVerificationToken': document.querySelector('#editUserForm input[name="__RequestVerificationToken"]').value
+                }
+            })
+            .then(response => {
+                if (response.redirected) {
+                    // If redirected, assume success and show popup
+                    showSuccessPopupAndRedirect();
+                    return;
+                }
+
+                if (response.ok) {
+                    return response.text();
+                } else {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+            })
+            .then(html => {
+                if (html) {
+                    // If we get HTML back, check if it contains success indicators
+                    if (html.includes('Profile updated successfully') ||
+                        html.includes('PopupMessage') ||
+                        html.includes('updated successfully')) {
+                        showSuccessPopupAndRedirect();
+                    } else {
+                        // Check for validation errors
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const errorElements = doc.querySelectorAll('.text-danger, .field-validation-error');
+
+                        if (errorElements.length > 0) {
+                            let errorMessages = [];
+                            errorElements.forEach(error => {
+                                if (error.textContent.trim()) {
+                                    errorMessages.push(error.textContent.trim());
+                                }
+                            });
+
+                            if (errorMessages.length > 0) {
+                                alert('Please fix the following errors:\n• ' + errorMessages.join('\n• '));
+                            } else {
+                                throw new Error('Update failed with unknown errors');
+                            }
+                        } else {
+                            // If no errors found, assume success
+                            showSuccessPopupAndRedirect();
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update user: ' + error.message);
+            })
+            .finally(() => {
+                // Restore button state
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        }
+
+        // Function to show success popup and redirect to list
+        function showSuccessPopupAndRedirect() {
+            // Show sweet alert or custom popup
+            if (typeof Swal !== 'undefined') {
+                // If SweetAlert2 is available
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'User updated successfully!',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    showUserList();
+                });
+            } else {
+                // Use native alert
+                alert('User updated successfully!');
+                showUserList();
+            }
+        }
+
+        // Function to load student data from database
+        async function loadStudentDataFromDatabase() {
+            const tableBody = document.getElementById('studentTableBody');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const errorAlert = document.getElementById('errorAlert');
+
+            // Show loading spinner
+            loadingSpinner.style.display = 'block';
+            tableBody.innerHTML = '';
+            errorAlert.style.display = 'none';
+
+            try {
+                const response = await fetch('/Student/List');
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const html = await response.text();
+
+                if (!html || html.trim() === '') {
+                    throw new Error('Empty response from server');
+                }
+
+                // Create a temporary div to parse the HTML
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+
+                // Extract the table rows from the parsed HTML
+                const rows = tempDiv.querySelectorAll('tbody tr');
+
+                if (rows.length > 0) {
+                    tableBody.innerHTML = '';
+                    rows.forEach(row => {
+                        // Clone the row and add event listeners to buttons
+                        const clonedRow = row.cloneNode(true);
+
+                        // Add click event to View button
+                        const viewBtn = clonedRow.querySelector('.btn-info');
+                        if (viewBtn) {
+                            const href = viewBtn.getAttribute('href');
+                            if (href) {
+                                const studentId = href.split('/').pop();
+                                viewBtn.onclick = (e) => {
+                                    e.preventDefault();
+                                    showViewUser(studentId);
+                                };
+                                // Remove href to prevent navigation
+                                viewBtn.removeAttribute('href');
+                            }
+                        }
+
+                        // Add click event to Edit button
+                        const editBtn = clonedRow.querySelector('.btn-warning');
+                        if (editBtn) {
+                            const href = editBtn.getAttribute('href');
+                            if (href) {
+                                const studentId = href.split('/').pop();
+                                editBtn.onclick = (e) => {
+                                    e.preventDefault();
+                                    showEditUser(studentId);
+                                };
+                                // Remove href to prevent navigation
+                                editBtn.removeAttribute('href');
+                            }
+                        }
+
+                        tableBody.appendChild(clonedRow);
+                    });
+                } else {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-4">
+                                <i class="fas fa-users fa-3x mb-3"></i>
+                                <br>
+                                No students found in the database.
+                            </td>
+                        </tr>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading student data:', error);
+                showError('Failed to load student data. Please try again.');
+            } finally {
+                // Hide loading spinner
+                loadingSpinner.style.display = 'none';
+            }
+        }
+
+        // Function to load student data for viewing - USING API
+        async function loadStudentDataForView(studentId) {
+            try {
+                console.log('Loading student data for view, ID:', studentId);
+
+                // Show loading state
+                const photoContainer = document.getElementById('userPhotoContainer');
+                photoContainer.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p>Loading...</p></div>';
+
+                // Fetch student details using API
+                const response = await fetch(`/api/students/${studentId}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const student = await response.json();
+
+                // Update view with student data
+                document.getElementById('viewFirstName').textContent = student.firstName || '-';
+                document.getElementById('viewLastName').textContent = student.lastName || '-';
+                document.getElementById('viewGender').textContent = student.gender || '-';
+                document.getElementById('viewDateOfBirth').textContent = student.dateOfBirth || '-';
+                document.getElementById('viewEmail').textContent = student.email || '-';
+                document.getElementById('viewPhone').textContent = student.phone || '-';
+                document.getElementById('viewEducation').textContent = student.education || '-';
+                document.getElementById('viewCountry').textContent = student.country || '-';
+                document.getElementById('viewState').textContent = student.state || '-';
+                document.getElementById('viewCity').textContent = student.city || '-';
+                document.getElementById('viewAddress').textContent = student.address || '-';
+                document.getElementById('viewPostalCode').textContent = student.postalCode || '-';
+                document.getElementById('viewHobbies').textContent = student.hobbies || '-';
+                document.getElementById('viewStatus').textContent = student.status || '-';
+
+                // Handle photo
+                if (student.photo) {
+                    photoContainer.innerHTML = `<img src="data:image/jpeg;base64,${student.photo}" alt="Student Photo" style="max-width: 200px; max-height: 200px; border-radius: 8px;" />`;
+                } else {
+                    photoContainer.innerHTML = '<span class="text-muted">No Photo Available</span>';
+                }
+
+                console.log('Student data loaded successfully for view');
+
+            } catch (error) {
+                console.error('Error loading student details:', error);
+                alert('Failed to load student details. Please try again.');
+
+                // Reset view to show error state
+                document.getElementById('userPhotoContainer').innerHTML = '<span class="text-muted">Error loading photo</span>';
+            }
+        }
+
+        // Function to load student data for editing - USING API
+        async function loadStudentDataForEdit(studentId) {
+            try {
+                console.log('Loading student data for edit, ID:', studentId);
+
+                // Fetch student details using API
+                const response = await fetch(`/api/students/${studentId}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const student = await response.json();
+
+                // Populate edit form
+                document.getElementById('editId').value = student.id;
+                document.getElementById('editFirstName').value = student.firstName || '';
+                document.getElementById('editLastName').value = student.lastName || '';
+                document.getElementById('editGender').value = student.gender || '';
+                document.getElementById('editDateOfBirth').value = student.dateOfBirth || '';
+                document.getElementById('editEmail').value = student.email || '';
+                document.getElementById('editPhone').value = student.phone || '';
+                document.getElementById('editEducation').value = student.education || '';
+                document.getElementById('editStatus').value = student.status || 'Active';
+                document.getElementById('editCountry').value = student.country || '';
+                document.getElementById('editState').value = student.state || '';
+                document.getElementById('editCity').value = student.city || '';
+                document.getElementById('editPostalCode').value = student.postalCode || '';
+                document.getElementById('editAddress').value = student.address || '';
+
+                // Handle hobbies
+                if (student.hobbies) {
+                    const hobbies = student.hobbies.split(',').map(h => h.trim());
+                    document.querySelectorAll('#editUserForm input[name="SelectedHobbies"]').forEach(checkbox => {
+                        checkbox.checked = hobbies.includes(checkbox.value);
+                    });
+                }
+
+                // Handle photo
+                const photoContainer = document.getElementById('editPhotoContainer');
+                if (student.photo) {
+                    photoContainer.innerHTML = `<img src="data:image/jpeg;base64,${student.photo}" width="120" class="d-block mb-2 rounded" alt="Current Photo" />`;
+                } else {
+                    photoContainer.innerHTML = '<div class="text-muted mb-2">No photo available</div>';
+                }
+
+                console.log('Student data loaded successfully for edit');
+
+            } catch (error) {
+                console.error('Error loading student data for editing:', error);
+                alert('Failed to load student data for editing. Please try again.');
+            }
+        }
+
+        // Format date for display
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
+        }
+
+        // Show error message
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorAlert').style.display = 'block';
+        }
+
+        // Show form error message
+        function showFormError(message) {
+            const errorList = document.getElementById('errorList');
+            errorList.innerHTML = `<li>${message}</li>`;
+            document.getElementById('errorAlertAddUser').style.display = 'block';
+        }
+
+        // Clear all error messages
+        function clearErrorMessages() {
+            const errorElements = document.querySelectorAll('.text-danger');
+            errorElements.forEach(element => {
+                element.textContent = '';
+            });
+        }
+
+        // Handle success messages from TempData
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for success messages in URL parameters or data attributes
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('success')) {
+                alert(urlParams.get('success'));
+            }
+
+            // Load initial student data
+            loadStudentDataFromDatabase();
+        });
+    </script>
+
+</body>
+</html>
