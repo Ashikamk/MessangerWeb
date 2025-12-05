@@ -81,11 +81,11 @@ namespace MessangerWeb.Controllers
                 {
                     connection.Open();
 
-                    string query = @"SELECT id, email, firstname, lastname, status 
+                    string query = @"SELECT ""id"", ""email"", ""firstname"", ""lastname"", ""status"" 
                                      FROM students 
-                                     WHERE email = @Email 
-                                     AND password = @Password 
-                                     AND status = 'Active'";
+                                     WHERE ""email"" = @Email 
+                                     AND ""password"" = @Password 
+                                     AND ""status"" = 'Active'";
 
                     using (var command = new NpgsqlCommand(query, connection))
                     {
@@ -167,9 +167,9 @@ namespace MessangerWeb.Controllers
 
                     string query = @"SELECT COUNT(*) 
                                      FROM students 
-                                     WHERE email = @Email 
-                                     AND password = @Password 
-                                     AND status != 'Active'";
+                                     WHERE ""email"" = @Email 
+                                     AND ""password"" = @Password 
+                                     AND ""status"" != 'Active'";
 
                     using (var command = new NpgsqlCommand(query, connection))
                     {
