@@ -1,5 +1,6 @@
 using System;
 using MessangerWeb.Services;
+using MessangerWeb.Hubs;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.SignalR;
@@ -98,6 +99,9 @@ namespace WebsiteApplication
                 endpoints.MapHub<VideoCallHub>("/videoCallHub", options =>
                 {
                     options.ApplicationMaxBufferSize = 1024 * 1024; // 1MB
+                });
+
+                endpoints.MapHub<ChatHub>("/chatHub");
                     options.TransportMaxBufferSize = 1024 * 1024; // 1MB
                     options.TransportSendTimeout = TimeSpan.FromSeconds(30);
                 });

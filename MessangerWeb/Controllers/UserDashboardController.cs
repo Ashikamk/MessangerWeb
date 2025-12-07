@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Npgsql;
 using WebsiteApplication.Services;
 using Microsoft.Extensions.Configuration;
+using MessangerWeb.Hubs;
 
 namespace MessangerWeb.Controllers
 {
@@ -23,17 +24,20 @@ namespace MessangerWeb.Controllers
         private readonly IVideoCallHistoryService _videoCallHistoryService;
         private readonly ILogger<UserDashboardController> _logger;
         private readonly IVideoCallParticipantService _videoCallParticipantService;
+        private readonly IHubContext<ChatHub> _hubContext;
 
         public UserDashboardController(
             IVideoCallHistoryService videoCallHistoryService,
             IVideoCallParticipantService videoCallParticipantService,
             ILogger<UserDashboardController> logger,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IHubContext<ChatHub> hubContext)
         {
             _videoCallHistoryService = videoCallHistoryService;
             _videoCallParticipantService = videoCallParticipantService;
             _logger = logger;
             connectionString = configuration.GetConnectionString("DefaultConnection");
+            _hubContext = hubContext;
         }
 
         public IActionResult Index(string selectedUserId = null, int? selectedGroupId = null)
@@ -127,7 +131,19 @@ namespace MessangerWeb.Controllers
                         command.Parameters.AddWithValue("@Message", messageText);
                         command.ExecuteNonQuery();
                     }
+                    }
                 }
+
+                // Broadcast via SignalR
+                var messageData = new 
+                { 
+                    senderId = senderId, 
+                    message = messageText, 
+                    sentAt = DateTime.UtcNow 
+                };
+                
+                await _hubContext.Clients.Group($"user_{receiverId}").SendAsync("ReceiveMessage", messageData);
+                await _hubContext.Clients.Group($"user_{senderId}").SendAsync("ReceiveMessage", messageData);
 
                 return Json(new { success = true });
             }
@@ -310,6 +326,21 @@ namespace MessangerWeb.Controllers
                         command.ExecuteNonQuery();
                     }
                 }
+
+                // Broadcast via SignalR
+                var messageData = new 
+                { 
+                    senderId = senderId, 
+                    message = "", 
+                    sentAt = DateTime.UtcNow,
+                    filePath = isImage ? null : relativePath,
+                    imagePath = isImage ? relativePath : null,
+                    fileName = file.FileName,
+                    fileOriginalName = file.FileName
+                };
+                
+                await _hubContext.Clients.Group($"user_{receiverId}").SendAsync("ReceiveMessage", messageData);
+                await _hubContext.Clients.Group($"user_{senderId}").SendAsync("ReceiveMessage", messageData);
 
                 return Json(new { success = true, fileName = file.FileName, isImage = isImage });
             }
@@ -676,9 +707,8 @@ namespace MessangerWeb.Controllers
                 {
                     connection.Open();
 
-                    var groupQuery = @"INSERT INTO `groups` (`group_name`, `created_by`, `created_at`, `group_image`, `updated_at`, `last_activity`) 
-                             VALUES (@GroupName, @CreatedBy, NOW(), @GroupImage, NOW(), NOW());
-                             SELECT LAST_INSERT_ID();";
+                    var groupQuery = @"INSERT INTO ""groups"" (""group_name"", ""created_by"", ""created_at"", ""group_image"", ""updated_at"", ""last_activity"") 
+                             VALUES (@GroupName, @CreatedBy, NOW(), @GroupImage, NOW(), NOW()) RETURNING ""group_id"";";
 
                     int groupId;
                     using (var command = new NpgsqlCommand(groupQuery, connection))
@@ -702,7 +732,7 @@ namespace MessangerWeb.Controllers
                         groupId = Convert.ToInt32(command.ExecuteScalar());
                     }
 
-                    var memberQuery = @"INSERT INTO `group_members` (`group_id`, `student_email`, `joined_at`) 
+                    var memberQuery = @"INSERT INTO ""group_members"" (""group_id"", ""student_email"", ""joined_at"") 
                               VALUES (@GroupId, @StudentEmail, NOW())";
 
                     // Add current user as member
@@ -725,7 +755,7 @@ namespace MessangerWeb.Controllers
                     }
 
                     // Add creation message - set is_read to 1 for creation messages
-                    var messageQuery = @"INSERT INTO `group_messages` (`group_id`, `sender_email`, `message`, `sent_at`, `is_read`) 
+                    var messageQuery = @"INSERT INTO ""group_messages"" (""group_id"", ""sender_email"", ""message"", ""sent_at"", ""is_read"") 
                                VALUES (@GroupId, @SenderEmail, @Message, NOW(), 1)";
 
                     using (var command = new NpgsqlCommand(messageQuery, connection))
@@ -771,6 +801,8 @@ namespace MessangerWeb.Controllers
         public IActionResult SendGroupMessage(int groupId, string messageText)
         {
             var senderEmail = HttpContext.Session.GetString("Email");
+            var senderId = HttpContext.Session.GetString("UserId");
+            var userName = HttpContext.Session.GetString("FirstName") + " " + HttpContext.Session.GetString("LastName");
 
             if (string.IsNullOrEmpty(senderEmail) || groupId <= 0 || string.IsNullOrEmpty(messageText))
             {
@@ -795,7 +827,19 @@ namespace MessangerWeb.Controllers
                         command.Parameters.AddWithValue("@Message", messageText);
                         command.ExecuteNonQuery();
                     }
+                    }
                 }
+
+                // Broadcast via SignalR
+                var messageData = new 
+                { 
+                    senderId = senderId, 
+                    message = messageText, 
+                    sentAt = DateTime.UtcNow,
+                    senderName = userName // Include sender name for group chat
+                };
+                
+                await _hubContext.Clients.Group($"group_{groupId}").SendAsync("ReceiveGroupMessage", messageData);
 
                 return Json(new { success = true });
             }
@@ -809,6 +853,8 @@ namespace MessangerWeb.Controllers
         public IActionResult SendGroupFile(IFormFile file, int groupId)
         {
             var senderEmail = HttpContext.Session.GetString("Email");
+            var senderId = HttpContext.Session.GetString("UserId");
+            var userName = HttpContext.Session.GetString("FirstName") + " " + HttpContext.Session.GetString("LastName");
 
             if (string.IsNullOrEmpty(senderEmail) || groupId <= 0 || file == null || file.Length == 0)
             {
@@ -862,6 +908,24 @@ namespace MessangerWeb.Controllers
                         command.ExecuteNonQuery();
                     }
                 }
+
+                    }
+                }
+
+                // Broadcast via SignalR
+                var messageData = new 
+                { 
+                    senderId = senderId, 
+                    message = "", 
+                    sentAt = DateTime.UtcNow,
+                    senderName = userName,
+                    filePath = isImage ? null : relativePath,
+                    imagePath = isImage ? relativePath : null,
+                    fileName = file.FileName,
+                    fileOriginalName = file.FileName
+                };
+                
+                await _hubContext.Clients.Group($"group_{groupId}").SendAsync("ReceiveGroupMessage", messageData);
 
                 return Json(new { success = true, fileName = file.FileName, isImage = isImage });
             }

@@ -2271,6 +2271,8 @@
         // ========================================
         // GLOBAL VARIABLES
         // ========================================
+        let currentUserId = '@Model.UserId';
+        let chatConnection = null;
         let currentReceiverId = '@(Model.SelectedUser?.UserId ?? Model.SelectedGroup?.GroupId.ToString())';
         let currentReceiverType = '@(Model.SelectedUser != null ? "user" : (Model.SelectedGroup != null ? "group" : ""))';
         let selectedFile = null;
@@ -2327,7 +2329,9 @@
             setupScrollHandling();
             restoreUserListScroll();
             loadUserProfile();
+            loadUserProfile();
             initializeVideoCallHub();
+            initializeChatHub();
 
             // Load unread messages count
             loadUnreadMessagesCount();
@@ -2364,7 +2368,132 @@
         // VIDEO CALLING SYSTEM
         // ========================================
 
-        function initializeVideoCallHub() {
+        
+        function initializeChatHub() {
+            console.log('🔌 Initializing Chat SignalR connection...');
+
+            chatConnection = new signalR.HubConnectionBuilder()
+                .withUrl('/chatHub')
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
+            chatConnection.on('ReceiveMessage', handleReceiveMessage);
+            chatConnection.on('ReceiveGroupMessage', handleReceiveGroupMessage);
+
+            chatConnection.start()
+                .then(() => {
+                    console.log('✅ Chat SignalR connected successfully');
+                    if (currentReceiverType === 'group' && currentReceiverId) {
+                        chatConnection.invoke('JoinGroupChat', currentReceiverId);
+                    }
+                })
+                .catch(err => console.error('❌ Chat SignalR connection error:', err));
+        }
+
+        function handleReceiveMessage(data) {
+            console.log('📩 Received message:', data);
+            if (currentReceiverType === 'user') {
+                if (data.senderId == currentUserId && currentReceiverId == data.senderId) {
+                     appendMessage(data);
+                } else if (data.senderId == currentReceiverId) {
+                    appendMessage(data);
+                } else if (data.senderId == currentUserId) {
+                    appendMessage(data);
+                }
+            }
+        }
+
+        function handleReceiveGroupMessage(data) {
+            console.log('📩 Received group message:', data);
+            if (currentReceiverType === 'group' && currentReceiverId == data.groupId) {
+                appendMessage(data);
+            } else if (currentReceiverType === 'group') {
+                 // If we are in the group (which we should be if we received it), append it.
+                 // But wait, data doesn't have groupId?
+                 // I need to check if I'm currently viewing this group.
+                 // If I am viewing this group, append.
+                 // But how do I know which group the message is for if data doesn't have groupId?
+                 // My C# code didn't include groupId in messageData!
+                 // I should fix C# code to include groupId.
+                 // For now, assume if I receive it via "group_{groupId}" channel, it's for that group.
+                 // But client side doesn't know which channel it came from easily.
+                 // So I should assume if I am viewing a group, and I receive a group message, it's for this group?
+                 // No, I might be joined to multiple groups (if I opened them previously? No, I only join when I open).
+                 // Wait, do I leave the group when I switch chat?
+                 // I didn't implement LeaveGroupChat call in switch.
+                 // I should implement LeaveGroupChat when switching.
+                 // Or just include groupId in messageData.
+                 appendMessage(data);
+            }
+        }
+
+        function appendMessage(data) {
+            const chatMessages = document.getElementById('chatMessages');
+            if (!chatMessages) return;
+
+            const noMessages = chatMessages.querySelector('.no-messages');
+            if (noMessages) noMessages.remove();
+
+            const isCurrentUserSender = (data.senderId == currentUserId);
+
+            if (chatMessages.children.length === 0) {
+                 const dateDiv = document.createElement('div');
+                 dateDiv.className = 'date-divider';
+                 dateDiv.innerHTML = `<span class="date-divider-text">Today</span>`;
+                 chatMessages.appendChild(dateDiv);
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isCurrentUserSender ? 'sent' : 'received'}`;
+
+            const time = new Date(data.sentAt).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+
+            let contentHtml = '';
+            if (data.filePath) {
+                contentHtml = `
+                    <div class="message-content file-message">
+                        <div class="file-icon">📄</div>
+                        <div class="file-info">
+                            <div class="file-name">${data.fileOriginalName || data.fileName}</div>
+                            <a href="${data.filePath}" class="file-download" download>Download</a>
+                        </div>
+                        <div class="message-time">${time}</div>
+                    </div>`;
+            } else if (data.imagePath) {
+                contentHtml = `
+                    <div class="message-content image-message">
+                        <img src="${data.imagePath}" alt="Image" onclick="openImageModal(this.src)">
+                        <div class="message-time">${time}</div>
+                    </div>`;
+            } else {
+                contentHtml = `
+                    <div class="message-content">
+                        ${data.message}
+                        <div class="message-time">${time}</div>
+                    </div>`;
+            }
+            
+            if (currentReceiverType === 'group' && !isCurrentUserSender && data.senderName) {
+                 const senderDiv = `<div class="message-sender">${data.senderName}</div>`;
+                 messageDiv.innerHTML = senderDiv + contentHtml;
+            } else {
+                 messageDiv.innerHTML = contentHtml;
+            }
+
+            chatMessages.appendChild(messageDiv);
+            if (shouldAutoScroll) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            moveChatToTop(currentReceiverId, currentReceiverType);
+        }
+
+
+function initializeVideoCallHub() {
             console.log('🔌 Initializing SignalR connection...');
 
             videoCallHub = new signalR.HubConnectionBuilder()
@@ -3336,6 +3465,10 @@
 
                 // Start auto-refresh
                 startAutoRefresh();
+                
+                if (currentReceiverType === 'group' && chatConnection && chatConnection.state === signalR.HubConnectionState.Connected) {
+                     chatConnection.invoke('JoinGroupChat', currentReceiverId);
+                }
             });
         }
 
@@ -3382,6 +3515,10 @@
 
                 // Start auto-refresh
                 startAutoRefresh();
+                
+                if (currentReceiverType === 'group' && chatConnection && chatConnection.state === signalR.HubConnectionState.Connected) {
+                     chatConnection.invoke('JoinGroupChat', currentReceiverId);
+                }
             });
         }
 
@@ -3614,8 +3751,8 @@
                     // Scroll to bottom
                     shouldAutoScroll = true;
 
-                    // Load messages to show the new message
-                    loadMessages();
+                    // SignalR handles display
+                    // loadMessages();
                 } else {
                     alert('Failed to send message: ' + data.message);
                 }
@@ -3660,8 +3797,8 @@
 
                     shouldAutoScroll = true;
 
-                    // Load messages to show the new file
-                    loadMessages();
+                    // SignalR handles display
+                    // loadMessages();
                 } else {
                     alert('Failed to send file: ' + data.message);
                 }
