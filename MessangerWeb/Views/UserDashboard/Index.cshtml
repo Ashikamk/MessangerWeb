@@ -3492,9 +3492,7 @@ function initializeVideoCallHub() {
                 // Start auto-refresh
                 startAutoRefresh();
                 
-                if (currentReceiverType === 'group' && chatConnection && chatConnection.state === signalR.HubConnectionState.Connected) {
-                     chatConnection.invoke('JoinGroupChat', currentReceiverId);
-                }
+
             });
         }
 
@@ -3503,6 +3501,12 @@ function initializeVideoCallHub() {
 
             currentReceiverId = groupId;
             currentReceiverType = 'group';
+
+            // Join SignalR group immediately
+            if (chatConnection && chatConnection.state === signalR.HubConnectionState.Connected) {
+                 chatConnection.invoke('JoinGroupChat', currentReceiverId.toString())
+                    .catch(err => console.error('Error joining group chat:', err));
+            }
 
             // Show chat interface
             document.getElementById('noChatSelected').style.display = 'none';
@@ -3542,9 +3546,7 @@ function initializeVideoCallHub() {
                 // Start auto-refresh
                 startAutoRefresh();
                 
-                if (currentReceiverType === 'group' && chatConnection && chatConnection.state === signalR.HubConnectionState.Connected) {
-                     chatConnection.invoke('JoinGroupChat', currentReceiverId);
-                }
+
             });
         }
 
