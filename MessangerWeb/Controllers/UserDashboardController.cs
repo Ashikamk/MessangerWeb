@@ -817,7 +817,7 @@ namespace MessangerWeb.Controllers
                     // Insert message with is_read = 0 (unread for everyone initially)
                     var query = @"INSERT INTO group_messages (group_id, sender_email, message, sent_at, is_read) 
                          VALUES (@GroupId, @SenderEmail, @Message, NOW(), 0);
-                         UPDATE `groups` SET last_activity = NOW() WHERE group_id = @GroupId;";
+                         UPDATE "groups" SET last_activity = NOW() WHERE group_id = @GroupId;";
 
                     using (var command = new NpgsqlCommand(query, connection))
                     {
@@ -888,13 +888,13 @@ namespace MessangerWeb.Controllers
                     {
                         query = @"INSERT INTO group_messages (group_id, sender_email, message, sent_at, is_read, image_path, file_original_name) 
                          VALUES (@GroupId, @SenderEmail, '', NOW(), 0, @ImagePath, @FileOriginalName);
-                         UPDATE `groups` SET last_activity = NOW() WHERE group_id = @GroupId;";
+                         UPDATE "groups" SET last_activity = NOW() WHERE group_id = @GroupId;";
                     }
                     else
                     {
                         query = @"INSERT INTO group_messages (group_id, sender_email, message, sent_at, is_read, file_path, file_original_name) 
                          VALUES (@GroupId, @SenderEmail, '', NOW(), 0, @FilePath, @FileOriginalName);
-                         UPDATE `groups` SET last_activity = NOW() WHERE group_id = @GroupId;";
+                         UPDATE "groups" SET last_activity = NOW() WHERE group_id = @GroupId;";
                     }
 
                     using (var command = new NpgsqlCommand(query, connection))
