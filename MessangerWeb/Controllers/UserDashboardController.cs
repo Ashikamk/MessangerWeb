@@ -319,8 +319,8 @@ namespace MessangerWeb.Controllers
                     {
                         command.Parameters.AddWithValue("@SenderEmail", senderEmail);
                         command.Parameters.AddWithValue("@ReceiverEmail", receiverUser.Email);
-                        command.Parameters.AddWithValue("@FilePath", isImage ? null : relativePath);
-                        command.Parameters.AddWithValue("@ImagePath", isImage ? relativePath : null);
+                        command.Parameters.AddWithValue("@FilePath", (object)(isImage ? null : relativePath) ?? DBNull.Value);
+                        command.Parameters.AddWithValue("@ImagePath", (object)(isImage ? relativePath : null) ?? DBNull.Value);
                         command.Parameters.AddWithValue("@FileName", fileName);
                         command.Parameters.AddWithValue("@FileOriginalName", file.FileName);
                         command.ExecuteNonQuery();
@@ -903,8 +903,8 @@ namespace MessangerWeb.Controllers
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
                         command.Parameters.AddWithValue("@SenderEmail", senderEmail);
-                        command.Parameters.AddWithValue("@FilePath", isImage ? null : relativePath);
-                        command.Parameters.AddWithValue("@ImagePath", isImage ? relativePath : null);
+                        command.Parameters.AddWithValue("@FilePath", (object)(isImage ? null : relativePath) ?? DBNull.Value);
+                        command.Parameters.AddWithValue("@ImagePath", (object)(isImage ? relativePath : null) ?? DBNull.Value);
                         command.Parameters.AddWithValue("@FileOriginalName", file.FileName);
                         command.ExecuteNonQuery();
                     }
