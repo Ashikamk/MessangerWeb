@@ -1,4 +1,34 @@
-using System;
+import os
+
+program_path = r"c:\Users\admin\Desktop\Scope India Project\MessangerWeb\MessangerWeb\Program.cs"
+
+with open(program_path, 'r', encoding='utf-8') as f:
+    content = f.read()
+
+# Check for duplication
+# If "using System;" appears twice, we have duplication.
+if content.count("using System;") > 1:
+    print("Duplication detected.")
+    # Find the second occurrence
+    first_idx = content.find("using System;")
+    second_idx = content.find("using System;", first_idx + 1)
+    
+    # We want to keep content up to the second occurrence, but wait.
+    # The previous view showed:
+    # 183:             app.UseSession();
+    # 184: 
+    # 185: using System;
+    
+    # So the first part ends at 184. But is it complete?
+    # The first part seems to be missing the end of the file (endpoints, app.Run, etc).
+    # The second part starts from scratch.
+    
+    # It seems the replace tool might have messed up badly.
+    # I should construct the file from scratch using the known good structure.
+    
+    # Let's just write the correct content directly.
+    
+    correct_content = """using System;
 using MessangerWeb.Services;
 using MessangerWeb.Hubs;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -115,3 +145,9 @@ namespace WebsiteApplication
         }
     }
 }
+"""
+    with open(program_path, 'w', encoding='utf-8') as f:
+        f.write(correct_content)
+    print("Rewrote Program.cs with correct content")
+else:
+    print("No duplication found")

@@ -131,7 +131,6 @@ namespace MessangerWeb.Controllers
                         command.Parameters.AddWithValue("@Message", messageText);
                         command.ExecuteNonQuery();
                     }
-                    }
                 }
 
                 // Broadcast via SignalR
