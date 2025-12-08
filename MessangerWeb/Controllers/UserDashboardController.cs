@@ -100,7 +100,7 @@ namespace MessangerWeb.Controllers
         }
 
         [HttpPost]
-        public IActionResult SendMessage(string receiverId, string messageText)
+        public async Task<IActionResult> SendMessage(string receiverId, string messageText)
         {
             var senderId = HttpContext.Session.GetString("UserId");
             var senderEmail = HttpContext.Session.GetString("Email");
@@ -263,7 +263,7 @@ namespace MessangerWeb.Controllers
 
 
         [HttpPost]
-        public IActionResult SendFile(IFormFile file, string receiverId)
+        public async Task<IActionResult> SendFile(IFormFile file, string receiverId)
         {
             var senderId = HttpContext.Session.GetString("UserId");
             var senderEmail = HttpContext.Session.GetString("Email");
@@ -797,7 +797,7 @@ namespace MessangerWeb.Controllers
         }
 
         [HttpPost]
-        public IActionResult SendGroupMessage(int groupId, string messageText)
+        public async Task<IActionResult> SendGroupMessage(int groupId, string messageText)
         {
             var senderEmail = HttpContext.Session.GetString("Email");
             var senderId = HttpContext.Session.GetString("UserId");
@@ -848,7 +848,7 @@ namespace MessangerWeb.Controllers
         }
 
         [HttpPost]
-        public IActionResult SendGroupFile(IFormFile file, int groupId)
+        public async Task<IActionResult> SendGroupFile(IFormFile file, int groupId)
         {
             var senderEmail = HttpContext.Session.GetString("Email");
             var senderId = HttpContext.Session.GetString("UserId");
