@@ -826,7 +826,6 @@ namespace MessangerWeb.Controllers
                         command.Parameters.AddWithValue("@Message", messageText);
                         command.ExecuteNonQuery();
                     }
-                    }
                 }
 
                 // Broadcast via SignalR
@@ -905,9 +904,6 @@ namespace MessangerWeb.Controllers
                         command.Parameters.AddWithValue("@ImagePath", isImage ? relativePath : null);
                         command.Parameters.AddWithValue("@FileOriginalName", file.FileName);
                         command.ExecuteNonQuery();
-                    }
-                }
-
                     }
                 }
 
