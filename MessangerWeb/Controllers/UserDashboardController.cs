@@ -138,7 +138,8 @@ namespace MessangerWeb.Controllers
                 { 
                     senderId = senderId, 
                     message = messageText, 
-                    sentAt = DateTime.UtcNow 
+                    sentAt = DateTime.UtcNow,
+                    receiverId = receiverId
                 };
                 
                 await _hubContext.Clients.Group($"user_{receiverId}").SendAsync("ReceiveMessage", messageData);
@@ -335,7 +336,8 @@ namespace MessangerWeb.Controllers
                     filePath = isImage ? null : relativePath,
                     imagePath = isImage ? relativePath : null,
                     fileName = file.FileName,
-                    fileOriginalName = file.FileName
+                    fileOriginalName = file.FileName,
+                    receiverId = receiverId
                 };
                 
                 await _hubContext.Clients.Group($"user_{receiverId}").SendAsync("ReceiveMessage", messageData);

@@ -2393,29 +2393,43 @@
 
         function handleReceiveMessage(data) {
             console.log('📩 Received message:', data);
-            if (currentReceiverType === 'user') {
-                if (data.senderId == currentUserId && currentReceiverId == data.senderId) {
-                     appendMessage(data);
-                } else if (data.senderId == currentReceiverId) {
-                    appendMessage(data);
-                } else if (data.senderId == currentUserId) {
-                    appendMessage(data);
-                } else {
-                    updateUnreadCount(data.senderId, 'user');
-                }
+            
+            let otherUserId;
+            if (data.senderId == currentUserId) {
+                otherUserId = data.receiverId;
             } else {
-                updateUnreadCount(data.senderId, 'user');
+                otherUserId = data.senderId;
+            }
+
+            // Move chat to top
+            if (otherUserId) {
+                moveChatToTop(otherUserId, 'user');
+            }
+
+            // Append message if viewing this chat
+            if (currentReceiverType === 'user' && currentReceiverId == otherUserId) {
+                appendMessage(data);
+            } else {
+                // Update unread count if I received it (not if I sent it)
+                if (data.senderId != currentUserId) {
+                    updateUnreadCount(otherUserId, 'user');
+                }
             }
         }
 
         function handleReceiveGroupMessage(data) {
             console.log('📩 Received group message:', data);
+            
+            if (data.groupId) {
+                moveChatToTop(data.groupId, 'group');
+            }
+
             if (currentReceiverType === 'group' && currentReceiverId == data.groupId) {
                 appendMessage(data);
             } else {
-                 if (data.groupId) {
+                if (data.groupId) {
                     updateUnreadCount(data.groupId, 'group');
-                 }
+                }
             }
         }
 
@@ -2432,9 +2446,6 @@
                     dot.className = 'unread-dot';
                     item.appendChild(dot);
                 }
-                // Move item to top of list
-                const list = item.parentElement;
-                list.insertBefore(item, list.firstChild);
             }
         }
 
