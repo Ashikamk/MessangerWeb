@@ -2400,7 +2400,11 @@
                     appendMessage(data);
                 } else if (data.senderId == currentUserId) {
                     appendMessage(data);
+                } else {
+                    updateUnreadCount(data.senderId, 'user');
                 }
+            } else {
+                updateUnreadCount(data.senderId, 'user');
             }
         }
 
@@ -2408,23 +2412,29 @@
             console.log('📩 Received group message:', data);
             if (currentReceiverType === 'group' && currentReceiverId == data.groupId) {
                 appendMessage(data);
-            } else if (currentReceiverType === 'group') {
-                 // If we are in the group (which we should be if we received it), append it.
-                 // But wait, data doesn't have groupId?
-                 // I need to check if I'm currently viewing this group.
-                 // If I am viewing this group, append.
-                 // But how do I know which group the message is for if data doesn't have groupId?
-                 // My C# code didn't include groupId in messageData!
-                 // I should fix C# code to include groupId.
-                 // For now, assume if I receive it via "group_{groupId}" channel, it's for that group.
-                 // But client side doesn't know which channel it came from easily.
-                 // So I should assume if I am viewing a group, and I receive a group message, it's for this group?
-                 // No, I might be joined to multiple groups (if I opened them previously? No, I only join when I open).
-                 // Wait, do I leave the group when I switch chat?
-                 // I didn't implement LeaveGroupChat call in switch.
-                 // I should implement LeaveGroupChat when switching.
-                 // Or just include groupId in messageData.
-                 appendMessage(data);
+            } else {
+                 if (data.groupId) {
+                    updateUnreadCount(data.groupId, 'group');
+                 }
+            }
+        }
+
+        function updateUnreadCount(id, type) {
+            const selector = type === 'user' 
+                ? `.user-item[data-user-id="${id}"]` 
+                : `.user-item[data-group-id="${id}"]`;
+            
+            const item = document.querySelector(selector);
+            if (item) {
+                let dot = item.querySelector('.unread-dot');
+                if (!dot) {
+                    dot = document.createElement('div');
+                    dot.className = 'unread-dot';
+                    item.appendChild(dot);
+                }
+                // Move item to top of list
+                const list = item.parentElement;
+                list.insertBefore(item, list.firstChild);
             }
         }
 
@@ -2447,7 +2457,12 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isCurrentUserSender ? 'sent' : 'received'}`;
 
-            const time = new Date(data.sentAt).toLocaleTimeString('en-US', {
+            // Ensure date is treated as UTC if it doesn't have Z
+            let dateStr = data.sentAt;
+            if (dateStr && !dateStr.endsWith('Z')) {
+                dateStr += 'Z';
+            }
+            const time = new Date(dateStr).toLocaleTimeString('en-US', {
                 hour: '2-digit',
                 minute: '2-digit',
                 hour12: true

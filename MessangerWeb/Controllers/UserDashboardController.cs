@@ -406,7 +406,7 @@ namespace MessangerWeb.Controllers
                                     SenderName = $"{reader["sender_firstname"]} {reader["sender_lastname"]}",
                                     ReceiverName = $"{reader["receiver_firstname"]} {reader["receiver_lastname"]}",
                                     MessageText = reader["message"]?.ToString() ?? "",
-                                    SentAt = Convert.ToDateTime(reader["sent_at"]),
+                                    SentAt = DateTime.SpecifyKind(Convert.ToDateTime(reader["sent_at"]), DateTimeKind.Utc),
                                     IsRead = Convert.ToBoolean(reader["is_read"]),
                                     IsCurrentUserSender = reader["sender_email"].ToString() == currentUserEmail,
                                     FilePath = reader["file_path"]?.ToString(),
@@ -834,7 +834,8 @@ namespace MessangerWeb.Controllers
                     senderId = senderId, 
                     message = messageText, 
                     sentAt = DateTime.UtcNow,
-                    senderName = userName // Include sender name for group chat
+                    senderName = userName, // Include sender name for group chat
+                    groupId = groupId
                 };
                 
                 await _hubContext.Clients.Group($"group_{groupId}").SendAsync("ReceiveGroupMessage", messageData);
@@ -917,7 +918,8 @@ namespace MessangerWeb.Controllers
                     filePath = isImage ? null : relativePath,
                     imagePath = isImage ? relativePath : null,
                     fileName = file.FileName,
-                    fileOriginalName = file.FileName
+                    fileOriginalName = file.FileName,
+                    groupId = groupId
                 };
                 
                 await _hubContext.Clients.Group($"group_{groupId}").SendAsync("ReceiveGroupMessage", messageData);
@@ -1042,7 +1044,7 @@ namespace MessangerWeb.Controllers
                     connection.Open();
                     var query = @"SELECT g.*, 
                          (SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.group_id) as member_count
-                         FROM `groups` g
+                         FROM ""groups"" g
                          INNER JOIN group_members gm ON g.group_id = gm.group_id
                          WHERE gm.student_email = @UserEmail
                          ORDER BY g.last_activity DESC, g.group_name ASC";
@@ -1131,7 +1133,7 @@ namespace MessangerWeb.Controllers
                                     ImagePath = reader["image_path"]?.ToString(),
                                     FilePath = reader["file_path"]?.ToString(),
                                     FileOriginalName = reader["file_original_name"]?.ToString(),
-                                    SentAt = Convert.ToDateTime(reader["sent_at"]),
+                                    SentAt = DateTime.SpecifyKind(Convert.ToDateTime(reader["sent_at"]), DateTimeKind.Utc),
                                     IsRead = isReadByCurrentUser,
                                     IsCurrentUserSender = reader["sender_email"].ToString() == currentUserEmail,
                                     // Add call message fields
