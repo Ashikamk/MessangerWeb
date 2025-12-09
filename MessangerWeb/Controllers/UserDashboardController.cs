@@ -997,15 +997,15 @@ namespace MessangerWeb.Controllers
                     var groupQuery = @"
                 SELECT g.group_id, COUNT(*) as unread_count
                 FROM group_messages gm
-                INNER JOIN `groups` g ON gm.group_id = g.group_id
+                INNER JOIN "groups" g ON gm.group_id = g.group_id
                 INNER JOIN group_members gm2 ON g.group_id = gm2.group_id
                 WHERE gm2.student_email = @UserEmail
                 AND gm.sender_email != @UserEmail
                 AND NOT EXISTS (
                     SELECT 1 FROM group_message_read_status gmrs 
-                    WHERE gmrs.group_message_id = gm.message_id 
+                    WHERE gmrs.group_message_id = gm.id 
                     AND gmrs.user_email = @UserEmail
-                    AND gmrs.has_read = 1
+                    AND gmrs.has_read = TRUE
                 )
                 GROUP BY g.group_id";
 
@@ -1104,9 +1104,9 @@ namespace MessangerWeb.Controllers
                          CONCAT(s.firstname, ' ', s.lastname) as sender_name,
                          EXISTS (
                              SELECT 1 FROM group_message_read_status gmrs 
-                             WHERE gmrs.group_message_id = gm.message_id 
+                             WHERE gmrs.group_message_id = gm.id 
                              AND gmrs.user_email = @CurrentUserEmail
-                             AND gmrs.has_read = 1
+                             AND gmrs.has_read = TRUE
                          ) as is_read_by_current_user
                          FROM group_messages gm
                          LEFT JOIN students s ON gm.sender_email = s.email
@@ -1126,7 +1126,7 @@ namespace MessangerWeb.Controllers
 
                                 messages.Add(new GroupMessage
                                 {
-                                    MessageId = Convert.ToInt32(reader["message_id"]),
+                                    MessageId = Convert.ToInt32(reader["id"]),
                                     GroupId = Convert.ToInt32(reader["group_id"]),
                                     SenderEmail = reader["sender_email"].ToString(),
                                     SenderName = reader["sender_name"].ToString(),
@@ -1257,7 +1257,7 @@ namespace MessangerWeb.Controllers
 
                     // Get all unread messages for this group that the user hasn't marked as read
                     var getUnreadMessagesQuery = @"
-                SELECT gm.message_id
+                SELECT gm.id
                 FROM group_messages gm
                 INNER JOIN group_members gmm ON gm.group_id = gmm.group_id
                 WHERE gm.group_id = @GroupId
@@ -1265,9 +1265,9 @@ namespace MessangerWeb.Controllers
                 AND gm.sender_email != @UserEmail
                 AND NOT EXISTS (
                     SELECT 1 FROM group_message_read_status gmrs 
-                    WHERE gmrs.group_message_id = gm.message_id 
+                    WHERE gmrs.group_message_id = gm.id 
                     AND gmrs.user_email = @UserEmail
-                    AND gmrs.has_read = 1
+                    AND gmrs.has_read = TRUE
                 )";
 
                     var unreadMessageIds = new List<int>();
@@ -1280,7 +1280,7 @@ namespace MessangerWeb.Controllers
                         {
                             while (reader.Read())
                             {
-                                unreadMessageIds.Add(Convert.ToInt32(reader["message_id"]));
+                                unreadMessageIds.Add(Convert.ToInt32(reader["id"]));
                             }
                         }
                     }
@@ -1290,8 +1290,8 @@ namespace MessangerWeb.Controllers
                     {
                         var insertQuery = @"
                     INSERT INTO group_message_read_status (group_message_id, user_email, has_read, read_at) 
-                    VALUES (@MessageId, @UserEmail, 1, NOW())
-                    ON DUPLICATE KEY UPDATE has_read = 1, read_at = NOW()";
+                    VALUES (@MessageId, @UserEmail, TRUE, NOW())
+                    ON CONFLICT (group_message_id, user_email) DO UPDATE SET has_read = TRUE, read_at = NOW()";
 
                         foreach (var messageId in unreadMessageIds)
                         {
@@ -1320,14 +1320,14 @@ namespace MessangerWeb.Controllers
             {
                 var createTableQuery = @"
             CREATE TABLE IF NOT EXISTS group_message_read_status (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+                id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
                 group_message_id INT NOT NULL,
                 user_email VARCHAR(255) NOT NULL,
-                has_read BOOLEAN DEFAULT 0,
-                read_at DATETIME,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE KEY unique_message_user (group_message_id, user_email),
-                FOREIGN KEY (group_message_id) REFERENCES group_messages(message_id) ON DELETE CASCADE
+                has_read BOOLEAN DEFAULT FALSE,
+                read_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE (group_message_id, user_email),
+                FOREIGN KEY (group_message_id) REFERENCES group_messages(id) ON DELETE CASCADE
             )";
 
                 using (var command = new NpgsqlCommand(createTableQuery, connection))
