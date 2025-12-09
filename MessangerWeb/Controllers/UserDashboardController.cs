@@ -1163,6 +1163,15 @@ namespace MessangerWeb.Controllers
                             {
                                 bool isReadByCurrentUser = Convert.ToBoolean(reader["is_read_by_current_user"]);
 
+                                // Safely get optional file path columns
+                                string imagePath = null;
+                                string filePath = null;
+                                string fileOriginalName = null;
+                                
+                                try { imagePath = reader["image_path"]?.ToString(); } catch { }
+                                try { filePath = reader["file_path"]?.ToString(); } catch { }
+                                try { fileOriginalName = reader["file_original_name"]?.ToString(); } catch { }
+
                                 messages.Add(new GroupMessage
                                 {
                                     MessageId = Convert.ToInt32(reader["id"]),
@@ -1170,16 +1179,12 @@ namespace MessangerWeb.Controllers
                                     SenderEmail = reader["sender_email"].ToString(),
                                     SenderName = reader["sender_name"].ToString(),
                                     MessageText = reader["message"]?.ToString() ?? "",
-                                    ImagePath = reader["image_path"]?.ToString(),
-                                    FilePath = reader["file_path"]?.ToString(),
-                                    FileOriginalName = reader["file_original_name"]?.ToString(),
+                                    ImagePath = imagePath,
+                                    FilePath = filePath,
+                                    FileOriginalName = fileOriginalName,
                                     SentAt = DateTime.SpecifyKind(Convert.ToDateTime(reader["sent_at"]), DateTimeKind.Utc),
                                     IsRead = isReadByCurrentUser,
-                                    IsCurrentUserSender = reader["sender_email"].ToString() == currentUserEmail,
-                                    // Add call message fields
-                                    IsCallMessage = reader["is_call_message"] != DBNull.Value && Convert.ToBoolean(reader["is_call_message"]),
-                                    CallDuration = reader["call_duration"]?.ToString(),
-                                    CallStatus = reader["call_status"]?.ToString()
+                                    IsCurrentUserSender = reader["sender_email"].ToString() == currentUserEmail
                                 });
                             }
                         }
