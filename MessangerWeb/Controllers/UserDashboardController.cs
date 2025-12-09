@@ -994,20 +994,19 @@ namespace MessangerWeb.Controllers
                     }
 
                     // Get unread group messages - FIXED QUERY
-                    var groupQuery = @"
-                SELECT g.group_id, COUNT(*) as unread_count
-                FROM group_messages gm
-                INNER JOIN ""groups"" g ON gm.group_id = g.group_id
-                INNER JOIN group_members gm2 ON g.group_id = gm2.group_id
-                WHERE gm2.student_email = @UserEmail
-                AND gm.sender_email != @UserEmail
-                AND NOT EXISTS (
-                    SELECT 1 FROM group_message_read_status gmrs 
-                    WHERE gmrs.group_message_id = gm.id 
-                    AND gmrs.user_email = @UserEmail
-                    AND gmrs.has_read = TRUE
-                )
-                GROUP BY g.group_id";
+                    var groupQuery = "SELECT g.group_id, COUNT(*) as unread_count " +
+                                     "FROM group_messages gm " +
+                                     "INNER JOIN \"groups\" g ON gm.group_id = g.group_id " +
+                                     "INNER JOIN group_members gm2 ON g.group_id = gm2.group_id " +
+                                     "WHERE gm2.student_email = @UserEmail " +
+                                     "AND gm.sender_email != @UserEmail " +
+                                     "AND NOT EXISTS ( " +
+                                     "    SELECT 1 FROM group_message_read_status gmrs " +
+                                     "    WHERE gmrs.group_message_id = gm.id " +
+                                     "    AND gmrs.user_email = @UserEmail " +
+                                     "    AND gmrs.has_read = TRUE " +
+                                     ") " +
+                                     "GROUP BY g.group_id";
 
                     using (var command = new NpgsqlCommand(groupQuery, connection))
                     {
