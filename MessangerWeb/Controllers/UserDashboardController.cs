@@ -1165,18 +1165,6 @@ namespace MessangerWeb.Controllers
 
                                 messages.Add(new GroupMessage
                                 {
-                                    MessageId = Convert.ToInt32(reader["id"]),
-                                    GroupId = Convert.ToInt32(reader["group_id"]),
-                                    SenderEmail = reader["sender_email"].ToString(),
-                                    SenderName = reader["sender_name"].ToString(),
-                                    MessageText = reader["message"]?.ToString() ?? "",
-                                    MessageRtf = reader["message_rtf"]?.ToString(),
-                                    ImagePath = reader["image_path"]?.ToString(),
-                                    FilePath = reader["file_path"]?.ToString(),
-                                    FileOriginalName = reader["file_original_name"]?.ToString(),
-                                    SentAt = DateTime.SpecifyKind(Convert.ToDateTime(reader["sent_at"]), DateTimeKind.Utc),
-                                    IsRead = isReadByCurrentUser,
-                                    IsCurrentUserSender = reader["sender_email"].ToString() == currentUserEmail,
                                     // Add call message fields
                                     IsCallMessage = reader["is_call_message"] != DBNull.Value && Convert.ToBoolean(reader["is_call_message"]),
                                     CallDuration = reader["call_duration"]?.ToString(),
@@ -1761,7 +1749,7 @@ namespace MessangerWeb.Controllers
                     OR 
                     (m.sender_email = @CurrentUserEmail AND m.receiver_email = s.email)
                 )
-                WHERE s.status = 'Active' AND s.id != @CurrentUserId
+                WHERE s.status = 'Active' AND s.id::text != @CurrentUserId
                 GROUP BY s.id, s.firstname, s.lastname, s.email, s.status, s.photo
                 ORDER BY last_message_time DESC, s.firstname ASC, s.lastname ASC";
 
