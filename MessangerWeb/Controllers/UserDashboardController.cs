@@ -997,7 +997,7 @@ namespace MessangerWeb.Controllers
                     var groupQuery = @"
                 SELECT g.group_id, COUNT(*) as unread_count
                 FROM group_messages gm
-                INNER JOIN "groups" g ON gm.group_id = g.group_id
+                INNER JOIN ""groups"" g ON gm.group_id = g.group_id
                 INNER JOIN group_members gm2 ON g.group_id = gm2.group_id
                 WHERE gm2.student_email = @UserEmail
                 AND gm.sender_email != @UserEmail
