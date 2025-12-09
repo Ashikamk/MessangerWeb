@@ -105,9 +105,19 @@ namespace MessangerWeb.Controllers
             var senderId = HttpContext.Session.GetString("UserId");
             var senderEmail = HttpContext.Session.GetString("Email");
 
-            if (string.IsNullOrEmpty(senderId) || string.IsNullOrEmpty(receiverId) || string.IsNullOrEmpty(messageText))
+            if (string.IsNullOrEmpty(senderId))
             {
-                return Json(new { success = false, message = "Invalid message data" });
+                return Json(new { success = false, message = "Session expired. Please login again." });
+            }
+
+            if (string.IsNullOrEmpty(receiverId))
+            {
+                return Json(new { success = false, message = "Invalid receiver ID." });
+            }
+
+            if (string.IsNullOrEmpty(messageText))
+            {
+                return Json(new { success = false, message = "Message cannot be empty." });
             }
 
             try
@@ -269,9 +279,19 @@ namespace MessangerWeb.Controllers
             var senderId = HttpContext.Session.GetString("UserId");
             var senderEmail = HttpContext.Session.GetString("Email");
 
-            if (string.IsNullOrEmpty(senderId) || string.IsNullOrEmpty(receiverId) || file == null || file.Length == 0)
+            if (string.IsNullOrEmpty(senderId))
             {
-                return Json(new { success = false, message = "Invalid file data" });
+                return Json(new { success = false, message = "Session expired. Please login again." });
+            }
+
+            if (string.IsNullOrEmpty(receiverId))
+            {
+                return Json(new { success = false, message = "Invalid receiver ID." });
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                return Json(new { success = false, message = "Invalid file data." });
             }
 
             try
@@ -805,9 +825,19 @@ namespace MessangerWeb.Controllers
             var senderId = HttpContext.Session.GetString("UserId");
             var userName = HttpContext.Session.GetString("FirstName") + " " + HttpContext.Session.GetString("LastName");
 
-            if (string.IsNullOrEmpty(senderEmail) || groupId <= 0 || string.IsNullOrEmpty(messageText))
+            if (string.IsNullOrEmpty(senderEmail))
             {
-                return Json(new { success = false, message = "Invalid message data" });
+                return Json(new { success = false, message = "Session expired. Please login again." });
+            }
+
+            if (groupId <= 0)
+            {
+                return Json(new { success = false, message = "Invalid group ID." });
+            }
+
+            if (string.IsNullOrEmpty(messageText))
+            {
+                return Json(new { success = false, message = "Message cannot be empty." });
             }
 
             try
@@ -857,9 +887,19 @@ namespace MessangerWeb.Controllers
             var senderId = HttpContext.Session.GetString("UserId");
             var userName = HttpContext.Session.GetString("FirstName") + " " + HttpContext.Session.GetString("LastName");
 
-            if (string.IsNullOrEmpty(senderEmail) || groupId <= 0 || file == null || file.Length == 0)
+            if (string.IsNullOrEmpty(senderEmail))
             {
-                return Json(new { success = false, message = "Invalid file data" });
+                return Json(new { success = false, message = "Session expired. Please login again." });
+            }
+
+            if (groupId <= 0)
+            {
+                return Json(new { success = false, message = "Invalid group ID." });
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                return Json(new { success = false, message = "Invalid file data." });
             }
 
             try
