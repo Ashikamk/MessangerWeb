@@ -167,56 +167,8 @@ function updateChatHeader(name, imageBase64) {
 function syncUnreadDots() {
     console.log('🔄 Syncing unread dots...');
 
-    fetch('/UserDashboard/GetUnreadMessagesCount')
-        .then(response => response.json())
-        .then(data => {
-            console.log('📊 Unread data received:', data);
-
-            if (data.success && data.unreadMessages) {
-                // Get all user items
-                const allUserItems = document.querySelectorAll('[data-user-id]');
-                const allGroupItems = document.querySelectorAll('[data-group-id]');
-
-                console.log(`Found ${allUserItems.length} user items and ${allGroupItems.length} group items in DOM`);
-
-                // First, remove all unread dots
-                allUserItems.forEach(userItem => {
-                    const userId = userItem.getAttribute('data-user-id');
-                    const unreadDot = userItem.querySelector('.unread-dot');
-                    if (unreadDot) {
-                        unreadDot.remove();
-                    }
-                });
-
-                allGroupItems.forEach(groupItem => {
-                    const groupId = groupItem.getAttribute('data-group-id');
-                    const unreadDot = groupItem.querySelector('.unread-dot');
-                    if (unreadDot) {
-                        unreadDot.remove();
-                    }
-                });
-
-                // Then, add unread dots for users/groups with unread messages
-                Object.keys(data.unreadMessages).forEach(id => {
-                    const count = data.unreadMessages[id];
-                    console.log(`Processing ID: ${id}, Count: ${count}`);
-
-                    if (count > 0) {
-                        // Try as user ID first
-                        updateUnreadDot(id, true);
-                        // Also try as group ID
-                        updateGroupUnreadDot(id, true);
-                    }
-                });
-
-                console.log('✅ Unread dots sync complete');
-            } else {
-                console.warn('⚠️ No unread messages data or request failed');
-            }
-        })
-        .catch(error => {
-            console.error('❌ Error syncing unread dots:', error);
-        });
+    console.error('❌ Error syncing unread dots:', error);
+});
 }
 
 // Start syncing unread dots every 3 seconds
