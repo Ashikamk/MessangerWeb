@@ -4,14 +4,37 @@
 
 // Helper function to update unread dot for single chats
 function updateUnreadDot(userId, show) {
-    const userItem = document.querySelector(`[data-user-id="${userId}"]`);
-    if (!userItem) return;
+    console.log(`🔴 updateUnreadDot called: userId=${userId}, show=${show}`);
+
+    // Try multiple selectors to find the user item
+    const selectors = [
+        `[data-user-id="${userId}"]`,
+        `.user-item[data-user-id="${userId}"]`,
+        `#user-${userId}`,
+        `.chat-item[data-id="${userId}"]`
+    ];
+
+    let userItem = null;
+    for (const selector of selectors) {
+        userItem = document.querySelector(selector);
+        if (userItem) {
+            console.log(`✅ Found user item with selector: ${selector}`);
+            break;
+        }
+    }
+
+    if (!userItem) {
+        console.warn(`❌ Could not find user item for userId: ${userId}`);
+        console.log('Available user items:', document.querySelectorAll('[data-user-id], .user-item, .chat-item'));
+        return;
+    }
 
     let unreadDot = userItem.querySelector('.unread-dot');
 
     if (show) {
         // Show the dot
         if (!unreadDot) {
+            console.log(`➕ Creating new unread dot for user ${userId}`);
             unreadDot = document.createElement('span');
             unreadDot.className = 'unread-dot';
             unreadDot.style.cssText = `
@@ -22,13 +45,78 @@ function updateUnreadDot(userId, show) {
                 position: absolute;
                 top: 10px;
                 right: 10px;
+                z-index: 10;
             `;
             userItem.style.position = 'relative';
             userItem.appendChild(unreadDot);
+            console.log(`✅ Unread dot created for user ${userId}`);
+        } else {
+            console.log(`ℹ️ Unread dot already exists for user ${userId}`);
         }
     } else {
         // Hide the dot
         if (unreadDot) {
+            console.log(`➖ Removing unread dot for user ${userId}`);
+            unreadDot.remove();
+        }
+    }
+}
+
+// Helper function to update unread dot for group chats
+function updateGroupUnreadDot(groupId, show) {
+    console.log(`🔴 updateGroupUnreadDot called: groupId=${groupId}, show=${show}`);
+
+    // Try multiple selectors to find the group item
+    const selectors = [
+        `[data-group-id="${groupId}"]`,
+        `.user-item[data-group-id="${groupId}"]`,
+        `#group-${groupId}`,
+        `.chat-item[data-group-id="${groupId}"]`
+    ];
+
+    let groupItem = null;
+    for (const selector of selectors) {
+        groupItem = document.querySelector(selector);
+        if (groupItem) {
+            console.log(`✅ Found group item with selector: ${selector}`);
+            break;
+        }
+    }
+
+    if (!groupItem) {
+        console.warn(`❌ Could not find group item for groupId: ${groupId}`);
+        console.log('Available group items:', document.querySelectorAll('[data-group-id], .group-item'));
+        return;
+    }
+
+    let unreadDot = groupItem.querySelector('.unread-dot');
+
+    if (show) {
+        // Show the dot
+        if (!unreadDot) {
+            console.log(`➕ Creating new unread dot for group ${groupId}`);
+            unreadDot = document.createElement('span');
+            unreadDot.className = 'unread-dot';
+            unreadDot.style.cssText = `
+                width: 10px;
+                height: 10px;
+                background: #ff4444;
+                border-radius: 50%;
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                z-index: 10;
+            `;
+            groupItem.style.position = 'relative';
+            groupItem.appendChild(unreadDot);
+            console.log(`✅ Unread dot created for group ${groupId}`);
+        } else {
+            console.log(`ℹ️ Unread dot already exists for group ${groupId}`);
+        }
+    } else {
+        // Hide the dot
+        if (unreadDot) {
+            console.log(`➖ Removing unread dot for group ${groupId}`);
             unreadDot.remove();
         }
     }
@@ -77,12 +165,19 @@ function updateChatHeader(name, imageBase64) {
 // Polls the backend and updates unread dots automatically
 // ========================================
 function syncUnreadDots() {
+    console.log('🔄 Syncing unread dots...');
+
     fetch('/UserDashboard/GetUnreadMessagesCount')
         .then(response => response.json())
         .then(data => {
+            console.log('📊 Unread data received:', data);
+
             if (data.success && data.unreadMessages) {
                 // Get all user items
                 const allUserItems = document.querySelectorAll('[data-user-id]');
+                const allGroupItems = document.querySelectorAll('[data-group-id]');
+
+                console.log(`Found ${allUserItems.length} user items and ${allGroupItems.length} group items in DOM`);
 
                 // First, remove all unread dots
                 allUserItems.forEach(userItem => {
@@ -93,17 +188,34 @@ function syncUnreadDots() {
                     }
                 });
 
-                // Then, add unread dots for users with unread messages
-                Object.keys(data.unreadMessages).forEach(userId => {
-                    const count = data.unreadMessages[userId];
-                    if (count > 0) {
-                        updateUnreadDot(userId, true);
+                allGroupItems.forEach(groupItem => {
+                    const groupId = groupItem.getAttribute('data-group-id');
+                    const unreadDot = groupItem.querySelector('.unread-dot');
+                    if (unreadDot) {
+                        unreadDot.remove();
                     }
                 });
+
+                // Then, add unread dots for users/groups with unread messages
+                Object.keys(data.unreadMessages).forEach(id => {
+                    const count = data.unreadMessages[id];
+                    console.log(`Processing ID: ${id}, Count: ${count}`);
+
+                    if (count > 0) {
+                        // Try as user ID first
+                        updateUnreadDot(id, true);
+                        // Also try as group ID
+                        updateGroupUnreadDot(id, true);
+                    }
+                });
+
+                console.log('✅ Unread dots sync complete');
+            } else {
+                console.warn('⚠️ No unread messages data or request failed');
             }
         })
         .catch(error => {
-            console.log('Error syncing unread dots:', error);
+            console.error('❌ Error syncing unread dots:', error);
         });
 }
 
@@ -114,8 +226,11 @@ setInterval(syncUnreadDots, 3000);
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', syncUnreadDots);
 } else {
-    syncUnreadDots();
+    // Page already loaded, sync after a short delay to ensure DOM is ready
+    setTimeout(syncUnreadDots, 1000);
 }
+
+console.log('✅ UI Fixes loaded - unread dot sync initialized');
 
 // ========================================
 // SIGNALR EVENT HANDLER: GROUP UPDATED
