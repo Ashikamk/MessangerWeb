@@ -1463,7 +1463,7 @@ namespace MessangerWeb.Controllers
         }
 
         [HttpPost]
-        public IActionResult RemoveMemberFromGroup(int groupId, string memberEmail)
+        public async Task<IActionResult> RemoveMemberFromGroup(int groupId, string memberEmail)
         {
             var userEmail = HttpContext.Session.GetString("Email");
             if (string.IsNullOrEmpty(userEmail))
@@ -1501,6 +1501,9 @@ namespace MessangerWeb.Controllers
 
                         if (rowsAffected > 0)
                         {
+                            // Broadcast to all group members via SignalR
+                            await _hubContext.Clients.Group($"group_{groupId}").SendAsync("GroupMemberRemoved", new { groupId, memberEmail });
+                            
                             return Json(new { success = true, message = "Member removed successfully" });
                         }
                         else
@@ -1584,7 +1587,7 @@ namespace MessangerWeb.Controllers
         }
 
         [HttpPost]
-        public IActionResult AddMembersToGroup([FromBody] AddMembersModel model)
+        public async Task<IActionResult> AddMembersToGroup([FromBody] AddMembersModel model)
         {
             var userEmail = HttpContext.Session.GetString("Email");
             if (string.IsNullOrEmpty(userEmail))
@@ -1628,6 +1631,9 @@ namespace MessangerWeb.Controllers
                         }
                     }
 
+                    // Broadcast to all group members via SignalR
+                    await _hubContext.Clients.Group($"group_{model.GroupId}").SendAsync("GroupMembersAdded", new { groupId = model.GroupId, memberEmails = model.MemberEmails });
+                    
                     return Json(new { success = true, message = "Members added successfully" });
                 }
             }
@@ -1639,7 +1645,7 @@ namespace MessangerWeb.Controllers
         }
 
         [HttpPost]
-        public IActionResult UpdateGroup([FromForm] UpdateGroupModel model)
+        public async Task<IActionResult> UpdateGroup([FromForm] UpdateGroupModel model)
         {
             var userEmail = HttpContext.Session.GetString("Email");
             if (string.IsNullOrEmpty(userEmail))
@@ -1719,6 +1725,14 @@ namespace MessangerWeb.Controllers
                                 }
                             }
                         }
+
+                        // Broadcast to all group members via SignalR
+                        await _hubContext.Clients.Group($"group_{model.GroupId}").SendAsync("GroupUpdated", new 
+                        { 
+                            groupId = model.GroupId, 
+                            groupName = model.GroupName,
+                            groupImageBase64 = groupImageBase64
+                        });
 
                         return Json(new
                         {
