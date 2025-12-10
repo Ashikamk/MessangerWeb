@@ -1403,7 +1403,7 @@ namespace MessangerWeb.Controllers
                     connection.Open();
 
                     // Get group creator
-                    var creatorQuery = "SELECT created_by FROM `groups` WHERE group_id = @GroupId";
+                    var creatorQuery = "SELECT created_by FROM \"groups\" WHERE group_id = @GroupId";
                     using (var command = new NpgsqlCommand(creatorQuery, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
@@ -1604,7 +1604,7 @@ namespace MessangerWeb.Controllers
                     connection.Open();
 
                     // Check if user is group creator
-                    var checkQuery = "SELECT created_by FROM `groups` WHERE group_id = @GroupId";
+                    var checkQuery = "SELECT created_by FROM \"groups\" WHERE group_id = @GroupId";
                     using (var command = new NpgsqlCommand(checkQuery, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", model.GroupId);
@@ -1654,7 +1654,7 @@ namespace MessangerWeb.Controllers
                     connection.Open();
 
                     // Check if user is group creator
-                    var checkQuery = "SELECT created_by FROM `groups` WHERE group_id = @GroupId";
+                    var checkQuery = "SELECT created_by FROM \"groups\" WHERE group_id = @GroupId";
                     using (var command = new NpgsqlCommand(checkQuery, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", model.GroupId);
@@ -1676,7 +1676,7 @@ namespace MessangerWeb.Controllers
                             model.GroupImage.CopyTo(memoryStream);
                             var imageData = memoryStream.ToArray();
 
-                            query = "UPDATE `groups` SET group_name = @GroupName, group_image = @GroupImage, updated_at = NOW() WHERE group_id = @GroupId";
+                            query = "UPDATE \"groups\" SET group_name = @GroupName, group_image = @GroupImage, updated_at = NOW() WHERE group_id = @GroupId";
                             updateCommand = new NpgsqlCommand(query, connection);
                             updateCommand.Parameters.AddWithValue("@GroupName", model.GroupName);
                             updateCommand.Parameters.AddWithValue("@GroupImage", imageData);
@@ -1685,7 +1685,7 @@ namespace MessangerWeb.Controllers
                     }
                     else
                     {
-                        query = "UPDATE `groups` SET group_name = @GroupName, updated_at = NOW() WHERE group_id = @GroupId";
+                        query = "UPDATE \"groups\" SET group_name = @GroupName, updated_at = NOW() WHERE group_id = @GroupId";
                         updateCommand = new NpgsqlCommand(query, connection);
                         updateCommand.Parameters.AddWithValue("@GroupName", model.GroupName);
                         updateCommand.Parameters.AddWithValue("@GroupId", model.GroupId);
@@ -1707,7 +1707,7 @@ namespace MessangerWeb.Controllers
                         else
                         {
                             // Get existing image if no new image was uploaded
-                            var getImageQuery = "SELECT group_image FROM `groups` WHERE group_id = @GroupId";
+                            var getImageQuery = "SELECT group_image FROM \"groups\" WHERE group_id = @GroupId";
                             using (var getImageCommand = new NpgsqlCommand(getImageQuery, connection))
                             {
                                 getImageCommand.Parameters.AddWithValue("@GroupId", model.GroupId);
