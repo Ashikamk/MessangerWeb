@@ -1478,7 +1478,7 @@ namespace MessangerWeb.Controllers
                     connection.Open();
 
                     // Check if user is group creator
-                    var checkQuery = "SELECT created_by FROM `groups` WHERE group_id = @GroupId";
+                    var checkQuery = "SELECT created_by FROM \"groups\" WHERE group_id = @GroupId";
                     using (var command = new NpgsqlCommand(checkQuery, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
@@ -1491,7 +1491,7 @@ namespace MessangerWeb.Controllers
                     }
 
                     // Don't allow removing the creator
-                    var deleteQuery = "DELETE FROM group_members WHERE group_id = @GroupId AND student_email = @MemberEmail AND student_email != (SELECT created_by FROM `groups` WHERE group_id = @GroupId)";
+                    var deleteQuery = "DELETE FROM group_members WHERE group_id = @GroupId AND student_email = @MemberEmail AND student_email != (SELECT created_by FROM \"groups\" WHERE group_id = @GroupId)";
                     using (var command = new NpgsqlCommand(deleteQuery, connection))
                     {
                         command.Parameters.AddWithValue("@GroupId", groupId);
