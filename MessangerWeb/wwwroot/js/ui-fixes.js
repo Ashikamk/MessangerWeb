@@ -73,6 +73,51 @@ function updateChatHeader(name, imageBase64) {
 }
 
 // ========================================
+// AUTOMATIC UNREAD DOT SYNCHRONIZATION
+// Polls the backend and updates unread dots automatically
+// ========================================
+function syncUnreadDots() {
+    fetch('/UserDashboard/GetUnreadMessagesCount')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.unreadMessages) {
+                // Get all user items
+                const allUserItems = document.querySelectorAll('[data-user-id]');
+
+                // First, remove all unread dots
+                allUserItems.forEach(userItem => {
+                    const userId = userItem.getAttribute('data-user-id');
+                    const unreadDot = userItem.querySelector('.unread-dot');
+                    if (unreadDot) {
+                        unreadDot.remove();
+                    }
+                });
+
+                // Then, add unread dots for users with unread messages
+                Object.keys(data.unreadMessages).forEach(userId => {
+                    const count = data.unreadMessages[userId];
+                    if (count > 0) {
+                        updateUnreadDot(userId, true);
+                    }
+                });
+            }
+        })
+        .catch(error => {
+            console.log('Error syncing unread dots:', error);
+        });
+}
+
+// Start syncing unread dots every 3 seconds
+setInterval(syncUnreadDots, 3000);
+
+// Also sync immediately on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', syncUnreadDots);
+} else {
+    syncUnreadDots();
+}
+
+// ========================================
 // SIGNALR EVENT HANDLER: GROUP UPDATED
 // Add this where your other connection.on handlers are
 // ========================================

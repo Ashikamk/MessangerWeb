@@ -1014,7 +1014,7 @@ namespace MessangerWeb.Controllers
                 FROM messages m
                 INNER JOIN students s ON m.sender_email = s.email
                 WHERE m.receiver_email = @UserEmail 
-                AND m.is_read = 0
+                AND m.is_read = FALSE
                 AND m.sender_email != @UserEmail
                 GROUP BY s.id";
 
