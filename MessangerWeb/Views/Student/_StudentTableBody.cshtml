@@ -1,0 +1,42 @@
+@model IEnumerable<MessangerWeb.Models.Student>
+
+@if (Model != null && Model.Any())
+{
+    foreach (var student in Model)
+    {
+        <tr>
+            <td>@student.FirstName</td>
+            <td>@student.LastName</td>
+            <td>@student.Gender</td>
+            <td>@(student.DateOfBirth?.ToString("yyyy-MM-dd") ?? "—")</td>
+            <td>@student.Email</td>
+            <td>@student.Phone</td>
+            <td>@student.Education</td>
+            <td>
+                <span class="badge @(student.Status == "Active" ? "bg-success" : "bg-warning")">
+                    @(string.IsNullOrEmpty(student.Status) ? "Active" : student.Status)
+                </span>
+            </td>
+            <td>
+                <div class="btn-group" role="group">
+                    <a href="@Url.Action("View", "Student", new { id = student.Id })" class="btn btn-info btn-sm me-1">
+                        <i class="fas fa-eye"></i> View
+                    </a>
+                    <a href="@Url.Action("Edit", "Student", new { id = student.Id })" class="btn btn-warning btn-sm">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                </div>
+            </td>
+        </tr>
+    }
+}
+else
+{
+    <tr>
+        <td colspan="9" class="text-center text-muted py-4">
+            <i class="fas fa-users fa-3x mb-3"></i>
+            <br>
+            No students found.
+        </td>
+    </tr>
+}

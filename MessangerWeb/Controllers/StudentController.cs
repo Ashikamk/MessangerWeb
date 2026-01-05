@@ -3,16 +3,20 @@ using MessangerWeb.Models;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.SignalR;
+using MessangerWeb.Hubs;
 
 namespace MessangerWeb.Controllers
 {
     public class StudentController : Controller
     {
         private readonly string connectionString;
+        private readonly IHubContext<StudentHub> _hubContext;
 
-        public StudentController(IConfiguration configuration)
+        public StudentController(IConfiguration configuration, IHubContext<StudentHub> hubContext)
         {
             connectionString = configuration.GetConnectionString("DefaultConnection");
+            _hubContext = hubContext;
         }
 
         // GET: /Student/Add
@@ -118,6 +122,7 @@ namespace MessangerWeb.Controllers
                         {
                             Console.WriteLine("Student added successfully to database!");
                             TempData["Success"] = "Student added successfully!";
+                            await _hubContext.Clients.All.SendAsync("ReceiveStudentUpdate");
                         }
                         else
                         {
@@ -386,6 +391,7 @@ namespace MessangerWeb.Controllers
                 }
 
                 TempData["PopupMessage"] = "Profile updated successfully!";
+                await _hubContext.Clients.All.SendAsync("ReceiveStudentUpdate");
                 return RedirectToAction("Edit", new { id = model.Id });
             }
             catch (Exception ex)
@@ -503,6 +509,50 @@ namespace MessangerWeb.Controllers
                 }
             }
             return null;
+        }
+
+        public async Task<IActionResult> GetStudentListPartial()
+        {
+            List<Student> students = new List<Student>();
+
+            try
+            {
+                using (var con = new NpgsqlConnection(connectionString))
+                {
+                    await con.OpenAsync();
+                    string query = "SELECT * FROM students";
+
+                    using (var cmd = new NpgsqlCommand(query, con))
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            students.Add(new Student
+                            {
+                                Id = reader.GetInt32("id"),
+                                FirstName = reader.GetString("firstname"),
+                                LastName = reader.GetString("lastname"),
+                                Gender = reader.GetString("gender"),
+                                DateOfBirth = reader.GetDateTime("dateOfBirth"),
+                                Email = reader.GetString("email"),
+                                Phone = reader.GetString("phone"),
+                                Education = reader.GetString("education"),
+                                Status = reader["status"] != DBNull.Value ? reader.GetString("status") : "Active",
+                                Country = reader["country"]?.ToString(),
+                                State = reader["state"]?.ToString(),
+                                City = reader["city"]?.ToString()
+                            });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle error
+                return StatusCode(500, ex.Message);
+            }
+
+            return PartialView("_StudentTableBody", students);
         }
 
         // Helper method to set dropdown lists

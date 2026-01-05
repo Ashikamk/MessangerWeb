@@ -1,64 +1,57 @@
-using MessangerWeb.Models;
+// Services/NotificationService.cs
+using Microsoft.AspNetCore.SignalR;
+using MessangerWeb.Hubs;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
-namespace WebsiteApplication.Services
+namespace MessangerWeb.Services
 {
-    public class NotificationService
+    public interface INotificationService
     {
-        private readonly List<CallNotification> _callNotifications = new List<CallNotification>();
-        private int _nextId = 1;
-
-        public bool SaveCallNotification(CallNotificationRequest request)
-        {
-            try
-            {
-                var notification = new CallNotification
-                {
-                    Id = _nextId++,
-                    ReceiverId = request.ReceiverId,
-                    CallerId = request.CallerId,
-                    CallerName = request.CallerName,
-                    CallerPhoto = request.CallerPhoto,
-                    CallType = request.CallType,
-                    Timestamp = request.Timestamp,
-                    IsRead = false
-                };
-
-                _callNotifications.Add(notification);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public List<CallNotification> GetPendingCallNotifications(string userId)
-        {
-            return _callNotifications
-                .Where(n => n.ReceiverId == userId && !n.IsRead)
-                .OrderByDescending(n => n.Timestamp)
-                .ToList();
-        }
-
-        public void MarkNotificationAsRead(int notificationId)
-        {
-            var notification = _callNotifications.FirstOrDefault(n => n.Id == notificationId);
-            if (notification != null)
-            {
-                notification.IsRead = true;
-            }
-        }
+        Task NotifyNewMessage(string receiverId, bool isGroup, string senderId, string messageId);
+        Task NotifyGroupUpdated(string groupId);
+        Task NotifyUserProfileUpdated(string userId);
+        Task NotifyChatListUpdate(string userId);
+        Task NotifyChatRead(string chatId, string chatType, string userId);
     }
 
-    public class CallNotification
+    public class NotificationService : INotificationService
     {
-        public int Id { get; set; }
-        public string ReceiverId { get; set; }
-        public string CallerId { get; set; }
-        public string CallerName { get; set; }
-        public string CallerPhoto { get; set; }
-        public string CallType { get; set; }
-        public DateTime Timestamp { get; set; }
-        public bool IsRead { get; set; }
+        private readonly IHubContext<ChatHub> _hubContext;
+
+        public NotificationService(IHubContext<ChatHub> hubContext)
+        {
+            _hubContext = hubContext;
+        }
+
+        public async Task NotifyNewMessage(string receiverId, bool isGroup, string senderId, string messageId)
+        {
+            // Implementation
+            await Task.CompletedTask;
+        }
+
+        public async Task NotifyGroupUpdated(string groupId)
+        {
+            // Implementation
+            await Task.CompletedTask;
+        }
+
+        public async Task NotifyUserProfileUpdated(string userId)
+        {
+            // Implementation
+            await Task.CompletedTask;
+        }
+
+        public async Task NotifyChatListUpdate(string userId)
+        {
+            // Implementation
+            await Task.CompletedTask;
+        }
+
+        public async Task NotifyChatRead(string chatId, string chatType, string userId)
+        {
+            // Implementation
+            await Task.CompletedTask;
+        }
     }
 }

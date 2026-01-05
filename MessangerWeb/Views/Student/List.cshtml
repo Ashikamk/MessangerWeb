@@ -1,4 +1,4 @@
-﻿@model IEnumerable<MessangerWeb.Models.Student>
+@model IEnumerable<MessangerWeb.Models.Student>
 @{
     ViewData["Title"] = "Student List";
     Layout = "_Layout"; // Use the layout with sticky navbar
@@ -136,48 +136,30 @@
                     <th>Actions</th>
                 </tr>
             </thead>
-            <tbody>
-                @if (Model != null && Model.Any())
-                {
-                    foreach (var student in Model)
-                    {
-                        <tr>
-                            <td>@student.FirstName</td>
-                            <td>@student.LastName</td>
-                            <td>@student.Gender</td>
-                            <td>@(student.DateOfBirth?.ToString("yyyy-MM-dd") ?? "—")</td>
-                            <td>@student.Email</td>
-                            <td>@student.Phone</td>
-                            <td>@student.Education</td>
-                            <td>
-                                <span class="badge @(student.Status == "Active" ? "bg-success" : "bg-warning")">
-                                    @(string.IsNullOrEmpty(student.Status) ? "Active" : student.Status)
-                                </span>
-                            </td>
-                            <td>
-                                <div class="btn-group" role="group">
-                                    <a href="@Url.Action("View", "Student", new { id = student.Id })" class="btn btn-info btn-sm me-1">
-                                        <i class="fas fa-eye"></i> View
-                                    </a>
-                                    <a href="@Url.Action("Edit", "Student", new { id = student.Id })" class="btn btn-warning btn-sm">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                }
-                else
-                {
-                    <tr>
-                        <td colspan="9" class="text-center text-muted py-4">
-                            <i class="fas fa-users fa-3x mb-3"></i>
-                            <br>
-                            No students found.
-                        </td>
-                    </tr>
-                }
+            <tbody id="studentTableBody">
+                <partial name="_StudentTableBody" model="Model" />
             </tbody>
         </table>
     </div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.js"></script>
+<script>
+    var connection = new signalR.HubConnectionBuilder().withUrl("/studentHub").build();
+
+    connection.on("ReceiveStudentUpdate", function () {
+        // Reload the table body
+        fetch('/Student/GetStudentListPartial')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById("studentTableBody").innerHTML = html;
+            })
+            .catch(error => console.error('Error reloading table:', error));
+    });
+
+    connection.start().then(function () {
+        console.log("Connected to StudentHub");
+    }).catch(function (err) {
+        return console.error(err.toString());
+    });
+</script>

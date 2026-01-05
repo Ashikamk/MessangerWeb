@@ -71,9 +71,10 @@ namespace MessangerWeb.Controllers
 
             try
             {
-                if (!TestDatabaseConnection())
+                string dbError;
+                if (!TestDatabaseConnection(out dbError))
                 {
-                    ViewBag.ErrorMessage = "Database connection failed. Please contact administrator.";
+                    ViewBag.ErrorMessage = $"Database connection failed: {dbError}";
                     return View();
                 }
 
@@ -141,8 +142,9 @@ namespace MessangerWeb.Controllers
         }
 
         // ================= HELPER METHODS =================
-        private bool TestDatabaseConnection()
+        private bool TestDatabaseConnection(out string errorMessage)
         {
+            errorMessage = string.Empty;
             try
             {
                 using (var connection = new NpgsqlConnection(connectionString))
@@ -151,8 +153,9 @@ namespace MessangerWeb.Controllers
                     return true;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                errorMessage = ex.Message;
                 return false;
             }
         }

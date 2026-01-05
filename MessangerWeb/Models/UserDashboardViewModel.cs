@@ -1,4 +1,4 @@
-﻿namespace MessangerWeb.Models
+namespace MessangerWeb.Models
 {
     public class UserDashboardViewModel
     {
@@ -17,6 +17,7 @@
 
         // Add this to track current view type
         public string CurrentViewType { get; set; } // "user" or "group"
+        public List<CombinedChatEntry> CombinedChats { get; set; }
     }
 
     public class UserInfo
@@ -27,7 +28,11 @@
         public string FullName { get; set; }
         public string Email { get; set; }
         public byte[] PhotoData { get; set; }
-        public DateTime LastMessageTime { get; set; } // Add this property
+        public DateTime LastMessageTime { get; set; } // Make sure this exists
+        public int UnreadCount { get; set; }
+
+        // Add last message preview
+        public string LastMessagePreview { get; set; }
 
         public string PhotoBase64
         {
@@ -93,6 +98,7 @@
         public byte[] GroupImage { get; set; }
         public DateTime UpdatedAt { get; set; }
         public DateTime LastActivity { get; set; }
+        public DateTime LastMessageTime { get; set; } // Make sure this exists
         public int UnreadCount { get; set; }
         public int MemberCount { get; set; }
 
@@ -136,6 +142,20 @@
                               (!string.IsNullOrEmpty(FileOriginalName) &&
                                new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" }
                                .Contains(Path.GetExtension(FileOriginalName)?.ToLower()));
+    }
+
+    public class CombinedChatEntry
+    {
+        public string ChatType { get; set; } // "user" or "group"
+        public string ChatId { get; set; }
+        public string ChatName { get; set; }
+        public string PhotoBase64 { get; set; }
+        public DateTime LastMessageTime { get; set; } // Use consistent name
+        public int UnreadCount { get; set; }
+        public DateTime LastTime { get; set; }
+        public bool IsSelected { get; set; }
+        public string LastMessagePreview { get; set; } // Optional: for showing last message
+        public bool HasUnreadMessages => UnreadCount > 0;
     }
 
     public class UserViewModel
