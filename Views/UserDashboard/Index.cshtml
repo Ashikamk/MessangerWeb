@@ -1794,6 +1794,30 @@
             transform: translateY(-50%) scale(1);
         }
     }
+
+    /* Unread Dot Indicator */
+    .unread-dot {
+        width: 10px;
+        height: 10px;
+        background: #ff4444;
+        border-radius: 50%;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 10;
+        animation: pulse-dot 2s infinite;
+    }
+
+    @@keyframes pulse-dot {
+        0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 0.7;
+            transform: scale(1.1);
+        }
+    }
 </style>
 
 <div class="dashboard-header">
@@ -2271,6 +2295,8 @@
         // ========================================
         // GLOBAL VARIABLES
         // ========================================
+        let currentUserId = '@Model.UserId';
+        let chatConnection = null;
         let currentReceiverId = '@(Model.SelectedUser?.UserId ?? Model.SelectedGroup?.GroupId.ToString())';
         let currentReceiverType = '@(Model.SelectedUser != null ? "user" : (Model.SelectedGroup != null ? "group" : ""))';
         let selectedFile = null;
@@ -2327,7 +2353,9 @@
             setupScrollHandling();
             restoreUserListScroll();
             loadUserProfile();
+            loadUserProfile();
             initializeVideoCallHub();
+            initializeChatHub();
 
             // Load unread messages count
             loadUnreadMessagesCount();
@@ -2364,7 +2392,158 @@
         // VIDEO CALLING SYSTEM
         // ========================================
 
-        function initializeVideoCallHub() {
+        
+        function initializeChatHub() {
+            console.log('🔌 Initializing Chat SignalR connection...');
+
+            chatConnection = new signalR.HubConnectionBuilder()
+                .withUrl('/chatHub')
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
+            chatConnection.on('ReceiveMessage', handleReceiveMessage);
+            chatConnection.on('ReceiveGroupMessage', handleReceiveGroupMessage);
+
+            chatConnection.start()
+                .then(() => {
+                    console.log('✅ Chat SignalR connected successfully');
+                    if (currentReceiverType === 'group' && currentReceiverId) {
+                        chatConnection.invoke('JoinGroupChat', currentReceiverId);
+                    }
+                })
+                .catch(err => console.error('❌ Chat SignalR connection error:', err));
+        }
+
+        function handleReceiveMessage(data) {
+            console.log('📩 Received message:', data);
+            
+            let otherUserId;
+            if (data.senderId == currentUserId) {
+                otherUserId = data.receiverId;
+            } else {
+                otherUserId = data.senderId;
+            }
+
+            // Move chat to top
+            if (otherUserId) {
+                moveChatToTop(otherUserId, 'user');
+            }
+
+            // Append message if viewing this chat
+            if (currentReceiverType === 'user' && currentReceiverId == otherUserId) {
+                appendMessage(data);
+            } else {
+                // Update unread count if I received it (not if I sent it)
+                if (data.senderId != currentUserId) {
+                    updateUnreadCount(otherUserId, 'user');
+                }
+            }
+        }
+
+        function handleReceiveGroupMessage(data) {
+            console.log('📩 Received group message:', data);
+            
+            if (data.groupId) {
+                moveChatToTop(data.groupId, 'group');
+            }
+
+            if (currentReceiverType === 'group' && currentReceiverId == data.groupId) {
+                appendMessage(data);
+            } else {
+                if (data.groupId) {
+                    updateUnreadCount(data.groupId, 'group');
+                }
+            }
+        }
+
+        function updateUnreadCount(id, type) {
+            const selector = type === 'user' 
+                ? `.user-item[data-user-id="${id}"]` 
+                : `.user-item[data-group-id="${id}"]`;
+            
+            const item = document.querySelector(selector);
+            if (item) {
+                let dot = item.querySelector('.unread-dot');
+                if (!dot) {
+                    dot = document.createElement('div');
+                    dot.className = 'unread-dot';
+                    item.appendChild(dot);
+                }
+            }
+        }
+
+        function appendMessage(data) {
+            const chatMessages = document.getElementById('chatMessages');
+            if (!chatMessages) return;
+
+            const noMessages = chatMessages.querySelector('.no-messages');
+            if (noMessages) noMessages.remove();
+
+            const isCurrentUserSender = (data.senderId == currentUserId);
+
+            if (chatMessages.children.length === 0) {
+                 const dateDiv = document.createElement('div');
+                 dateDiv.className = 'date-divider';
+                 dateDiv.innerHTML = `<span class="date-divider-text">Today</span>`;
+                 chatMessages.appendChild(dateDiv);
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isCurrentUserSender ? 'sent' : 'received'}`;
+
+            // Ensure date is treated as UTC if it doesn't have Z
+            let dateStr = data.sentAt;
+            if (dateStr && !dateStr.endsWith('Z')) {
+                dateStr += 'Z';
+            }
+            const time = new Date(dateStr).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+
+            let contentHtml = '';
+            if (data.filePath) {
+                contentHtml = `
+                    <div class="message-content file-message">
+                        <div class="file-icon">📄</div>
+                        <div class="file-info">
+                            <div class="file-name">${data.fileOriginalName || data.fileName}</div>
+                            <a href="${data.filePath}" class="file-download" download>Download</a>
+                        </div>
+                        <div class="message-time">${time}</div>
+                    </div>`;
+            } else if (data.imagePath) {
+                contentHtml = `
+                    <div class="message-content image-message">
+                        <img src="${data.imagePath}" alt="Image" onclick="openImageModal(this.src)">
+                        <div class="message-time">${time}</div>
+                    </div>`;
+            } else {
+                contentHtml = `
+                    <div class="message-content">
+                        ${data.message}
+                        <div class="message-time">${time}</div>
+                    </div>`;
+            }
+            
+            if (currentReceiverType === 'group' && !isCurrentUserSender && data.senderName) {
+                 const senderDiv = `<div class="message-sender">${data.senderName}</div>`;
+                 messageDiv.innerHTML = senderDiv + contentHtml;
+            } else {
+                 messageDiv.innerHTML = contentHtml;
+            }
+
+            chatMessages.appendChild(messageDiv);
+            if (shouldAutoScroll) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            moveChatToTop(currentReceiverId, currentReceiverType);
+        }
+
+
+function initializeVideoCallHub() {
             console.log('🔌 Initializing SignalR connection...');
 
             videoCallHub = new signalR.HubConnectionBuilder()
@@ -3336,6 +3515,8 @@
 
                 // Start auto-refresh
                 startAutoRefresh();
+                
+
             });
         }
 
@@ -3344,6 +3525,12 @@
 
             currentReceiverId = groupId;
             currentReceiverType = 'group';
+
+            // Join SignalR group immediately
+            if (chatConnection && chatConnection.state === signalR.HubConnectionState.Connected) {
+                 chatConnection.invoke('JoinGroupChat', currentReceiverId.toString())
+                    .catch(err => console.error('Error joining group chat:', err));
+            }
 
             // Show chat interface
             document.getElementById('noChatSelected').style.display = 'none';
@@ -3382,6 +3569,8 @@
 
                 // Start auto-refresh
                 startAutoRefresh();
+                
+
             });
         }
 
@@ -3614,8 +3803,8 @@
                     // Scroll to bottom
                     shouldAutoScroll = true;
 
-                    // Load messages to show the new message
-                    loadMessages();
+                    // SignalR handles display
+                    // loadMessages();
                 } else {
                     alert('Failed to send message: ' + data.message);
                 }
@@ -3660,8 +3849,8 @@
 
                     shouldAutoScroll = true;
 
-                    // Load messages to show the new file
-                    loadMessages();
+                    // SignalR handles display
+                    // loadMessages();
                 } else {
                     alert('Failed to send file: ' + data.message);
                 }
@@ -4896,6 +5085,60 @@
             if (chatMessages) {
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
+        });
+
+        // ========================================
+        // UNREAD DOTS FUNCTIONALITY
+        // ========================================
+
+        // Function to add/remove unread dot
+        function updateUnreadDot(elementSelector, show) {
+            const element = document.querySelector(elementSelector);
+            if (!element) return;
+            
+            let dot = element.querySelector('.unread-dot');
+            
+            if (show) {
+                if (!dot) {
+                    dot = document.createElement('span');
+                    dot.className = 'unread-dot';
+                    element.style.position = 'relative';
+                    element.appendChild(dot);
+                }
+            } else {
+                if (dot) {
+                    dot.remove();
+                }
+            }
+        }
+
+        // Function to load and display unread counts
+        function loadUnreadDots() {
+            fetch('/UserDashboard/GetUnreadMessagesCount')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.unreadMessages) {
+                        // Clear all existing dots
+                        document.querySelectorAll('.unread-dot').forEach(dot => dot.remove());
+                        
+                        // Add dots for chats with unread messages
+                        Object.keys(data.unreadMessages).forEach(id => {
+                            const count = data.unreadMessages[id];
+                            if (count > 0) {
+                                // Try both user and group selectors
+                                updateUnreadDot(`[data-user-id="${id}"]`, true);
+                                updateUnreadDot(`[data-group-id="${id}"]`, true);
+                            }
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading unread dots:', error));
+        }
+
+        // Load unread dots on page load and refresh every 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUnreadDots();
+            setInterval(loadUnreadDots, 5000);
         });
     </script>
 }

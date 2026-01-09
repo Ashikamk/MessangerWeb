@@ -1,11 +1,12 @@
 using System;
 using MessangerWeb.Services;
+using MessangerWeb.Hubs;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using WebsiteApplication.Services;
 
 namespace WebsiteApplication
 {
@@ -17,6 +18,7 @@ namespace WebsiteApplication
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
+            builder.Services.AddRazorPages();
 
             builder.Services.AddSession(options =>
             {
@@ -42,23 +44,38 @@ namespace WebsiteApplication
             builder.Services.AddSignalR(options =>
             {
                 options.EnableDetailedErrors = true;
-                options.MaximumReceiveMessageSize = 1024 * 1024; // 1MB
-                options.StreamBufferCapacity = 1024 * 1024; // 1MB
+                options.MaximumReceiveMessageSize = 1024000;
+                options.StreamBufferCapacity = 1024 * 1024;
                 options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
                 options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+            });
+
+            builder.Services.AddSignalR(options =>
+            {
+                options.EnableDetailedErrors = true;
+                options.MaximumReceiveMessageSize = 1024 * 1024; // 1MB
             });
 
             // Add logging
             builder.Services.AddLogging();
 
-            // Add your custom services
-            builder.Services.AddScoped<MySqlConnectionService>();
+            // Add all required services for UserDashboardController
+            // 1. Notification Service
+            builder.Services.AddScoped<INotificationService, NotificationService>();
+
+            // 2. Video Call History Service (you need to implement this)
+            // First, check if these interfaces exist. If not, you'll need to create them.
+            // If you don't have these services yet, create placeholder implementations:
+
+            // Placeholder interface and implementation for IVideoCallHistoryService
+            // Add this to your MessangerWeb.Services namespace
             builder.Services.AddScoped<IVideoCallHistoryService, VideoCallHistoryService>();
+
+            // 3. Video Call Participant Service
             builder.Services.AddScoped<IVideoCallParticipantService, VideoCallParticipantService>();
 
-            // Add these services
+            // 4. User Service
             builder.Services.AddSingleton<UserService>();
-            builder.Services.AddSingleton<NotificationService>();
 
             // Add HTTP context accessor
             builder.Services.AddHttpContextAccessor();
@@ -79,7 +96,6 @@ namespace WebsiteApplication
             app.UseHttpsRedirection();
             app.UseStaticFiles();
 
-
             app.UseRouting();
 
             // Use Authentication & Authorization BEFORE SignalR
@@ -87,24 +103,37 @@ namespace WebsiteApplication
             app.UseAuthorization();
 
             app.UseSession();
+            app.MapHub<ChatHub>("/chatHub");
 
-            app.UseEndpoints(endpoints =>
+            // Map SignalR Hubs
+            app.MapHub<VideoCallHub>("/videoCallHub", options =>
             {
-                endpoints.MapControllerRoute(
-                    name: "default",
-                    pattern: "{controller=Home}/{action=Index}/{id?}");
-
-                // Map SignalR Hubs with increased buffer sizes
-                endpoints.MapHub<VideoCallHub>("/videoCallHub", options =>
-                {
-                    options.ApplicationMaxBufferSize = 1024 * 1024; // 1MB
-                    options.TransportMaxBufferSize = 1024 * 1024; // 1MB
-                    options.TransportSendTimeout = TimeSpan.FromSeconds(30);
-                });
+                options.ApplicationMaxBufferSize = 1024 * 1024;
+                options.TransportMaxBufferSize = 1024 * 1024;
+                options.TransportSendTimeout = TimeSpan.FromSeconds(30);
             });
-            app.Urls.Add("http://0.0.0.0:5000");
+
+            app.MapHub<ChatHub>("/chatHub", options =>
+            {
+                options.TransportMaxBufferSize = 1024 * 1024;
+                options.TransportSendTimeout = TimeSpan.FromSeconds(30);
+            });
+
+            app.MapHub<GroupHub>("/groupHub", options =>
+            {
+                options.TransportMaxBufferSize = 1024 * 1024;
+                options.TransportSendTimeout = TimeSpan.FromSeconds(30);
+            });
+
+            app.MapHub<StudentHub>("/studentHub");
+
+            // Map controller routes LAST
+            app.MapControllerRoute(
+                name: "default",
+                pattern: "{controller=Home}/{action=Index}/{id?}");
 
             app.Run();
         }
     }
 }
+
