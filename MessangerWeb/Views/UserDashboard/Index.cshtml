@@ -5,20 +5,6 @@
 }
 
 <style>
-    /* Unread Dot */
-    .unread-dot {
-        width: 10px;
-        height: 10px;
-        background-color: #f56565;
-        border-radius: 50%;
-        position: absolute;
-        right: 15px;
-        top: 50%;
-        transform: translateY(-50%);
-        box-shadow: 0 0 5px rgba(245, 101, 101, 0.5);
-        pointer-events: none;
-        z-index: 10;
-    }
     /* [All your existing CSS styles remain exactly the same] */
     body {
         font-family: 'Segoe UI', sans-serif;
@@ -220,46 +206,6 @@
         margin-bottom: 30px;
     }
 
-    /* Add to your existing CSS */
-    .unread-dot {
-        width: 12px;
-        height: 12px;
-        background-color: #f56565;
-        border-radius: 50%;
-        position: absolute;
-        right: 15px;
-        top: 50%;
-        transform: translateY(-50%);
-        box-shadow: 0 0 8px rgba(245, 101, 101, 0.7);
-        pointer-events: none;
-        z-index: 10;
-        animation: pulse 1.5s infinite;
-    }
-
-    .unread-count-badge {
-        position: absolute;
-        top: -5px;
-        right: -5px;
-        background: #f56565;
-        color: white;
-        border-radius: 50%;
-        width: 18px;
-        height: 18px;
-        font-size: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        border: 2px solid white;
-        z-index: 11;
-    }
-
-  
-    /* Ensure user items have relative positioning for dot placement */
-    .user-item {
-        position: relative !important;
-    }
-
     .call-actions {
         display: flex;
         gap: 20px;
@@ -337,25 +283,6 @@
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         background: #2d3748;
     }
-
-
-    .chat-item {
-        position: relative;
-        padding: 12px;
-        border-bottom: 1px solid #eee;
-        cursor: pointer;
-        transition: background-color 0.2s;
-        display: flex;
-        align-items: center;
-    }
-
-        .chat-item:hover {
-            background-color: #f5f5f5;
-        }
-
-        .chat-item.active {
-            background-color: #e3f2fd;
-        }
 
     .video-controls {
         position: absolute;
@@ -509,37 +436,6 @@
         border: 2px solid rgba(102, 126, 234, 0.2);
     }
 
-    .chat-messages {
-        flex: 1;
-        padding: 20px;
-        overflow-y: auto;
-        background: linear-gradient(135deg, #f7fafc 0%, #ffffff 100%);
-        scroll-behavior: smooth; /* Add smooth scrolling */
-    }
-
-    /* Add a subtle indicator when new messages arrive */
-    .new-message-indicator {
-        position: sticky;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        z-index: 100;
-        display: none;
-        animation: fadeIn 0.3s ease;
-    }
-
-        .new-message-indicator:hover {
-            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-        }
-
     .modal-header {
         padding: 20px 25px;
         border-bottom: 2px solid rgba(102, 126, 234, 0.2);
@@ -638,6 +534,38 @@
         box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
     }
 
+    /* Typing Indicator */
+    .typing-indicator {
+        padding: 10px 15px;
+        background: #edf2f7;
+        border-radius: 18px;
+        margin: 10px 20px;
+        display: none;
+        font-style: italic;
+        color: #718096;
+        font-size: 14px;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Online Indicator */
+    .online-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        border: 2px solid white;
+        z-index: 2;
+    }
+
+
+
+    .unread-dot {
+        animation: notificationPulse 2s infinite;
+    }
+
     /* Group Call Participants */
     .group-call-participants {
         position: absolute;
@@ -664,6 +592,16 @@
         align-items: center;
         padding: 4px 0;
         font-size: 12px;
+    }
+
+    /* Add to existing CSS */
+    .chat-messages {
+        scroll-behavior: smooth;
+        overflow-anchor: none; /* Prevents browser auto-scroll */
+    }
+
+    .message:last-child {
+        overflow-anchor: auto; /* Only anchor last message */
     }
 
     .participant-status {
@@ -1042,6 +980,9 @@
                 font-weight: 600;
             }
 
+            .user-item.active .unread-dot {
+                background: #667eea;
+            }
 
     .user-photo {
         width: 40px;
@@ -1084,6 +1025,19 @@
         padding: 20px;
     }
 
+    /* Unread Message Dot */
+    .unread-dot {
+        width: 12px;
+        height: 12px;
+        background: #f56565;
+        border-radius: 50%;
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        animation: pulse 2s infinite;
+        box-shadow: 0 0 8px rgba(245, 101, 101, 0.5);
+    }
 
     /* Chat Section */
     .chat-section {
@@ -2192,45 +2146,62 @@
 
         <div class="user-list">
             <ul id="userList">
-                <!-- Combined Chats -->
-                @if (Model.CombinedChats != null && Model.CombinedChats.Count > 0)
+                <!-- Individual Users -->
+                @if (Model.Users != null && Model.Users.Count > 0)
                 {
-                    foreach (var chat in Model.CombinedChats)
+                    foreach (var user in Model.Users)
                     {
-                        var isActive = (chat.ChatType == "user" && Model.SelectedUser?.UserId == chat.ChatId) ||
-                                       (chat.ChatType == "group" && Model.SelectedGroup?.GroupId.ToString() == chat.ChatId);
-                        <li class="user-item @(isActive ? "active" : "")"
-                            data-chat-id="@chat.ChatId"
-                            @if (chat.ChatType == "user")
+                        <li class="user-item @(Model.SelectedUser?.UserId == user.UserId ? "active" : "")"
+                            data-user-id="@user.UserId"
+                            data-user-name="@user.FirstName @user.LastName"
+                            data-user-photo="@user.PhotoBase64"
+                            data-last-message-time="@user.LastMessageTime.ToString("yyyy-MM-ddTHH:mm:ss")"
+                            data-is-group="false"
+                            onclick="selectUser('@user.UserId', '@user.FirstName @user.LastName', '@user.PhotoBase64')">
+                            @if (!string.IsNullOrEmpty(user.PhotoBase64))
                             {
-                                <text>data-user-id="@chat.ChatId"</text>
-                            }
-                            else
-                            {
-                                <text>data-group-id="@chat.ChatId"</text>
-                            }
-                            data-chat-name="@chat.ChatName"
-                            data-chat-photo="@chat.PhotoBase64"
-                            data-last-activity-time="@chat.LastTime.ToString("yyyy-MM-ddTHH:mm:ss")"
-                            data-timestamp="@chat.LastTime.ToString("yyyy-MM-ddTHH:mm:ss")"
-                            data-is-group="@(chat.ChatType == "group" ? "true" : "false")"
-                            onclick="@(chat.ChatType == "user" ? $"selectUser('{chat.ChatId}', '{chat.ChatName}', '{chat.PhotoBase64}')" : $"selectGroup('{chat.ChatId}', '{chat.ChatName}', '{chat.PhotoBase64}')")"
-                            style="position: relative;">
-                            @if (!string.IsNullOrEmpty(chat.PhotoBase64))
-                            {
-                                <img src="data:image/jpeg;base64,@chat.PhotoBase64" alt="@chat.ChatName" class="user-photo" />
+                                <img src="data:image/jpeg;base64,@user.PhotoBase64" alt="@user.FullName" class="user-photo" />
                             }
                             else
                             {
                                 <div class="default-avatar">
-                                    @(chat.ChatType == "user" ? chat.ChatName.Substring(0, 2).ToUpper() : "👥")
+                                    @user.FirstName[0]@user.LastName[0]
                                 </div>
                             }
-                            <span class="user-name">@chat.ChatName</span>
+                            <span class="user-name">@user.FirstName @user.LastName</span>
                         </li>
                     }
                 }
-                else
+
+                <!-- Groups -->
+                @if (Model.Groups != null && Model.Groups.Count > 0)
+                {
+                    foreach (var group in Model.Groups)
+                    {
+                        <li class="user-item @(Model.SelectedGroup?.GroupId == group.GroupId ? "active" : "")"
+                            data-group-id="@group.GroupId"
+                            data-group-name="@group.GroupName"
+                            data-group-photo="@group.GroupImageBase64"
+                            data-last-activity-time="@group.LastActivity.ToString("yyyy-MM-ddTHH:mm:ss")"
+                            data-is-group="true"
+                            onclick="selectGroup('@group.GroupId', '@group.GroupName', '@group.GroupImageBase64')"
+                            style="position: relative;">
+                            @if (!string.IsNullOrEmpty(group.GroupImageBase64))
+                            {
+                                <img src="data:image/jpeg;base64,@group.GroupImageBase64" alt="@group.GroupName" class="user-photo" />
+                            }
+                            else
+                            {
+                                <div class="default-avatar">
+                                    👥
+                                </div>
+                            }
+                            <span class="user-name">@group.GroupName</span>
+                        </li>
+                    }
+                }
+
+                @if ((Model.Users == null || Model.Users.Count == 0) && (Model.Groups == null || Model.Groups.Count == 0))
                 {
                     <li class="no-users">No chats available</li>
                 }
@@ -2337,19 +2308,13 @@
 </div>
 
 @section Scripts {
-    <input type="hidden" id="currentUserId" value="@Model.UserId" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.js"></script>
-    <script src="~/js/unread-manager.js"></script>
     <script>
         // ========================================
-        // GLOBAL VARIABLES - DECLARED FIRST
+        // GLOBAL VARIABLES
         // ========================================
-        window.currentReceiverId = '@(Model.SelectedUser?.UserId ?? Model.SelectedGroup?.GroupId.ToString())';
-        window.currentReceiverType = '@(Model.SelectedUser != null ? "user" : (Model.SelectedGroup != null ? "group" : ""))';
-
-        // Local variables for backward compatibility
-        let currentReceiverId = window.currentReceiverId;
-        let currentReceiverType = window.currentReceiverType;
+        let currentReceiverId = '@(Model.SelectedUser?.UserId ?? Model.SelectedGroup?.GroupId.ToString())';
+        let currentReceiverType = '@(Model.SelectedUser != null ? "user" : (Model.SelectedGroup != null ? "group" : ""))';
         let selectedFile = null;
         let isEditorActive = false;
         let isEmojiPickerActive = false;
@@ -2359,24 +2324,27 @@
         let currentFilter = 'all';
         let editGroupImageFile = null;
         let selectedMembersToAdd = [];
-        let autoRefreshInterval = null;
+        let unreadMessages = {};
+        let isFirstLoad = true;
+        let isMarkingAsRead = false;
+        let autoRefreshInterval;
 
         // Video Call Variables
-        window.videoCallConnection = null;
-        window.localStream = null;
-        window.remoteStream = null;
-        window.currentCallId = null;
-        window.incomingCallData = null;
-        window.callTimer = null;
-        window.callStartTime = null;
-        window.isAudioMuted = false;
-        window.isVideoMuted = false;
-        window.isScreenSharing = false;
-        window.screenStream = null;
-        window.videoCallHub = null;
+        let videoCallConnection = null;
+        let localStream = null;
+        let remoteStream = null;
+        let currentCallId = null;
+        let incomingCallData = null;
+        let callTimer = null;
+        let callStartTime = null;
+        let isAudioMuted = false;
+        let isVideoMuted = false;
+        let isScreenSharing = false;
+        let screenStream = null;
+        let videoCallHub = null;
 
         // WebRTC Configuration
-        window.rtcConfiguration = {
+        const rtcConfiguration = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
@@ -2391,301 +2359,444 @@
         // Common emojis
         const emojis = ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕'];
 
-        // Group call participants
-        window.groupCallParticipants = new Map();
 
-                // ========================================
-        // SIGNALR REAL-TIME UPDATES
+        // ========================================
+        // INITIALIZATION
+        // ========================================
+                document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== PAGE LOADED ===');
+            initEmojiGrid();
+            setupMessageInput();
+            loadUserProfile();
+            initializeVideoCallHub();
+
+            // Load unread messages count
+            loadUnreadMessagesCount();
+
+            // Initialize chat if already selected
+            if (currentReceiverId && currentReceiverType) {
+                if (currentReceiverType === 'user') {
+                    const userItem = document.querySelector(`.user-item[data-user-id="${currentReceiverId}"]`);
+                    if (userItem) {
+                        const userName = userItem.getAttribute('data-user-name');
+                        const userPhoto = userItem.getAttribute('data-user-photo');
+                        updateUserChatHeader(userName, userPhoto);
+                    }
+                    initializeUserChat(currentReceiverId);
+                } else if (currentReceiverType === 'group') {
+                    const groupItem = document.querySelector(`.user-item[data-group-id="${currentReceiverId}"]`);
+                    if (groupItem) {
+                        const groupName = groupItem.getAttribute('data-group-name');
+                        const groupPhoto = groupItem.getAttribute('data-group-photo');
+                        updateGroupChatHeader(groupName, groupPhoto);
+                    }
+                    initializeGroupChat(currentReceiverId);
+                }
+            }
+
+            // Apply initial filter
+            filterChats();
+
+            // Sort chat list once on load
+            sortChatList();
+        });
+        // ========================================
+        // SIGNALR REAL-TIME EVENT HANDLERS
         // ========================================
 
-        let chatHubConnection = null;
-
-        function initializeSignalR() {
-            console.log('🔌 Initializing SignalR for real-time updates...');
-
-            chatHubConnection = new signalR.HubConnectionBuilder()
+        function setupSignalRRealTimeHandlers() {
+            // Connect to SignalR hub
+            const connection = new signalR.HubConnectionBuilder()
                 .withUrl('/chatHub')
                 .withAutomaticReconnect()
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
 
-            // Setup event handlers
-            setupChatHubHandlers();
-
-            // Start connection
-            startChatHubConnection();
-        }
-
-        function startChatHubConnection() {
-            chatHubConnection.start()
+            // ========================================
+            // CONNECTION MANAGEMENT
+            // ========================================
+            connection.start()
                 .then(() => {
-                    console.log('✅ SignalR ChatHub connected');
+                    console.log('✅ SignalR connected for real-time updates');
 
-                    // Get current user ID
-                    const currentUserId = document.getElementById('currentUserId').value;
-                    if (currentUserId) {
-                        // Subscribe to user updates
-                        chatHubConnection.invoke('JoinUserChat', currentUserId);
-                        chatHubConnection.invoke('JoinChatList', currentUserId);
+                    // Join user's chat list group
+                    connection.invoke('JoinUserChat', '@Model.UserId');
+                    connection.invoke('JoinChatList', '@Model.UserId');
 
-                        console.log(`✅ Subscribed to user updates for ID: ${currentUserId}`);
-                    }
-
-                    // Subscribe to current group if in group chat
+                    // Join any active group
                     if (currentReceiverType === 'group' && currentReceiverId) {
-                        chatHubConnection.invoke('JoinGroupChat', currentReceiverId);
-                        console.log(`✅ Subscribed to group updates for ID: ${currentReceiverId}`);
+                        connection.invoke('JoinGroup', currentReceiverId);
                     }
                 })
                 .catch(err => {
-                    console.error('❌ SignalR ChatHub connection error:', err);
-                    setTimeout(startChatHubConnection, 5000);
+                    console.error('❌ SignalR connection error:', err);
+                    setTimeout(setupSignalRRealTimeHandlers, 5000);
                 });
-        }
 
-        function setupChatHubHandlers() {
-            // Receive new individual message
-            chatHubConnection.on('ReceiveNewMessage', function(senderId, messageId) {
-                console.log('📥 New message from:', senderId);
+            // ========================================
+            // REAL-TIME MESSAGE HANDLERS
+            // ========================================
+            connection.on('ReceiveMessage', (data) => {
+                console.log('📨 Real-time message received:', data);
 
-                // If this message is for the currently open chat
-                if (currentReceiverId === senderId && currentReceiverType === 'user') {
-                    // Load new messages
-                    loadMessages();
+                if (data.senderId === currentReceiverId && currentReceiverType === 'user') {
+                    // Message is for current chat, add it to UI
+                    addMessageToUI(data);
 
-                    // Move chat to top
-                    moveChatToTop(senderId, 'user');
-
-                    // Mark as read
-                    if (window.unreadManager) {
-                        window.unreadManager.markAsRead(senderId, 'user');
-                    }
+                    // Mark as read if chat is open
+                    markMessagesAsRead();
                 } else {
-                    // Update unread count
-                    if (window.unreadManager) {
-                        window.unreadManager.incrementUnread(senderId, 'user');
-                    }
+                    // Message is for another chat, update unread counts
+                    updateUnreadDotsRealTime(data.senderId, 'user');
                 }
 
-                // Update chat list
-                loadUnifiedChats();
+                // Update chat order
+                if (data.updateChatOrder) {
+                    moveChatToTop(data.senderId, 'user');
+                }
             });
 
-            // Receive new group message
-            chatHubConnection.on('ReceiveNewGroupMessage', function(groupId, senderId, messageId) {
-                console.log('📥 New group message from:', senderId, 'in group:', groupId);
+            connection.on('ReceiveGroupMessage', (data) => {
+                console.log('📨 Real-time group message received:', data);
 
-                // If this message is for the currently open group chat
-                if (currentReceiverId === groupId && currentReceiverType === 'group') {
-                    // Load new messages
-                    loadMessages();
+                if (data.groupId.toString() === currentReceiverId && currentReceiverType === 'group') {
+                    // Message is for current group chat, add it to UI
+                    addGroupMessageToUI(data);
 
-                    // Move chat to top
-                    moveChatToTop(groupId, 'group');
-
-                    // Mark as read if current user is not the sender
-                    const currentUserId = document.getElementById('currentUserId').value;
-                    if (senderId !== currentUserId && window.unreadManager) {
-                        window.unreadManager.markAsRead(groupId, 'group');
-                    }
+                    // Mark as read if chat is open
+                    markMessagesAsRead();
                 } else {
-                    // Only update unread if current user is not the sender
-                    const currentUserId = document.getElementById('currentUserId').value;
-                    if (senderId !== currentUserId && window.unreadManager) {
-                        window.unreadManager.incrementUnread(groupId, 'group');
+                    // Message is for another group, update unread counts
+                    updateUnreadDotsRealTime(data.groupId.toString(), 'group');
+                }
+
+                // Update chat order
+                if (data.updateChatOrder) {
+                    moveChatToTop(data.groupId.toString(), 'group');
+                }
+            });
+
+            // ========================================
+            // REAL-TIME PROFILE UPDATE HANDLERS
+            // ========================================
+            connection.on('ProfileUpdated', (data) => {
+                console.log('👤 Real-time profile update:', data);
+
+                // Update profile in chat list
+                updateUserProfileInList(data.userId, data.fullName, data.photoBase64);
+
+                // Update chat header if this user is currently selected
+                if (currentReceiverId === data.userId && currentReceiverType === 'user') {
+                    updateUserChatHeader(data.fullName, data.photoBase64);
+                }
+
+                // Update welcome text if it's the current user
+                if (data.userId === '@Model.UserId') {
+                    document.querySelector('.welcome-text').textContent = `Welcome ${data.fullName} !`;
+
+                    // Update profile button image
+                    const profileBtn = document.querySelector('.profile-btn');
+                    if (data.photoBase64) {
+                        const img = profileBtn.querySelector('img') || document.createElement('img');
+                        img.className = 'profile-btn-image';
+                        img.src = 'data:image/jpeg;base64,' + data.photoBase64;
+                        img.alt = 'Profile';
+
+                        const placeholder = profileBtn.querySelector('.profile-btn-placeholder');
+                        if (placeholder) {
+                            profileBtn.removeChild(placeholder);
+                        }
+
+                        if (!profileBtn.querySelector('img')) {
+                            profileBtn.appendChild(img);
+                        }
                     }
                 }
-
-                // Update chat list
-                loadUnifiedChats();
             });
 
-            // Group updated (name, photo, etc.)
-            chatHubConnection.on('GroupUpdated', function(groupId) {
-                console.log('🔄 Group updated:', groupId);
+            // ========================================
+            // REAL-TIME GROUP UPDATE HANDLERS
+            // ========================================
+            connection.on('GroupUpdated', (data) => {
+                console.log('👥 Real-time group update:', data);
 
-                // Reload group info if currently viewing this group
-                if (currentReceiverId === groupId && currentReceiverType === 'group') {
-                    reloadGroupHeader(groupId);
-                }
+                // Update group in chat list
+                updateGroupInList(data.groupId, data.groupName, data.groupImageBase64);
 
-                // Reload chat list
-                loadUnifiedChats();
-            });
-
-            // User profile updated
-            chatHubConnection.on('UserProfileUpdated', function(userId) {
-                console.log('🔄 User profile updated:', userId);
-
-                const currentUserId = document.getElementById('currentUserId').value;
-                if (userId === currentUserId) {
-                    // Reload current user's profile
-                    loadUserProfile();
-
-                    // Update welcome text
-                    fetch('/UserDashboard/GetCurrentUserProfile')
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                document.querySelector('.welcome-text').textContent =
-                                    `Welcome ${data.firstName} ${data.lastName}!`;
-                            }
-                        });
-                }
-
-                // Reload chat list
-                loadUnifiedChats();
-            });
-
-            // Chat list needs update
-            chatHubConnection.on('UpdateChatList', function() {
-                console.log('🔄 Chat list updated');
-
-                // Reload unified chats
-                loadUnifiedChats();
-
-                // If unread manager exists, sync with server
-                if (window.unreadManager && typeof window.unreadManager.syncWithServer === 'function') {
-                    window.unreadManager.syncWithServer();
+                // Update chat header if this group is currently selected
+                if (currentReceiverId === data.groupId.toString() && currentReceiverType === 'group') {
+                    updateGroupChatHeader(data.groupName, data.groupImageBase64);
                 }
             });
 
-            // Group member removed
-            chatHubConnection.on('GroupMemberRemoved', function(data) {
-                console.log('👥 Group member removed:', data);
+            connection.on('GroupCreated', (data) => {
+                console.log('👥 New group created:', data);
+                // Refresh chat list to show new group
+                refreshChatList();
+            });
 
-                const currentUserId = document.getElementById('currentUserId').value;
-                const currentUserEmail = '@Model.UserEmail';
+            connection.on('GroupMemberAdded', (data) => {
+                console.log('👥 Member added to group:', data);
+                // Refresh group members list if this group is open
+                if (currentReceiverId === data.groupId.toString() && currentReceiverType === 'group') {
+                    loadGroupMembers();
+                }
+            });
 
-                // If current user was removed, redirect to dashboard
-                if (data.memberEmail === currentUserEmail) {
-                    alert('You have been removed from the group');
-                    window.location.href = '/UserDashboard';
+            connection.on('GroupMemberRemoved', (data) => {
+                console.log('👥 Member removed from group:', data);
+
+                // If current user was removed, close the chat
+                if (data.memberId === '@Model.UserId' && currentReceiverId === data.groupId.toString()) {
+                    resetChatUI();
                 } else {
-                    // Reload group members
+                    // Refresh group members list
                     if (currentReceiverId === data.groupId.toString() && currentReceiverType === 'group') {
                         loadGroupMembers();
                     }
                 }
             });
 
-            // Group members added
-            chatHubConnection.on('GroupMembersAdded', function(data) {
-                console.log('👥 Group members added:', data);
+            // ========================================
+            // REAL-TIME CHAT LIST UPDATES
+            // ========================================
+            connection.on('UpdateChatList', () => {
+                console.log('🔄 Real-time chat list update requested');
+                refreshChatList();
+            });
 
-                // Reload group members if currently viewing this group
-                if (currentReceiverId === data.groupId.toString() && currentReceiverType === 'group') {
-                    loadGroupMembers();
+            connection.on('UpdateUnreadCounts', () => {
+                console.log('🔴 Real-time unread counts update requested');
+                loadUnreadMessagesCount();
+            });
+
+            // ========================================
+            // TYPING INDICATOR HANDLERS
+            // ========================================
+            connection.on('UserTyping', (userId, isTyping) => {
+                if (currentReceiverId === userId && currentReceiverType === 'user') {
+                    showTypingIndicator(userId, isTyping);
                 }
             });
+
+            // ========================================
+            // ONLINE STATUS HANDLERS
+            // ========================================
+            connection.on('UserOnlineStatus', (userId, isOnline) => {
+                updateUserOnlineStatus(userId, isOnline);
+            });
+
+            // ========================================
+            // RECONNECTION HANDLING
+            // ========================================
+            connection.onreconnecting((error) => {
+                console.log('🔄 SignalR reconnecting due to:', error);
+            });
+
+            connection.onreconnected((connectionId) => {
+                console.log('✅ SignalR reconnected. Connection ID:', connectionId);
+
+                // Rejoin groups
+                connection.invoke('JoinUserChat', '@Model.UserId');
+                connection.invoke('JoinChatList', '@Model.UserId');
+
+                if (currentReceiverType === 'group' && currentReceiverId) {
+                    connection.invoke('JoinGroup', currentReceiverId);
+                }
+            });
+
+            return connection;
         }
 
-        // Helper function to reload group header
-        function reloadGroupHeader(groupId) {
-            fetch(`/UserDashboard/GetGroupInfo?groupId=${groupId}`)
+        // ========================================
+        // UI UPDATE FUNCTIONS
+        // ========================================
+
+        function updateUserProfileInList(userId, fullName, photoBase64) {
+            const userItem = document.querySelector(`.user-item[data-user-id="${userId}"]`);
+            if (userItem) {
+                // Update name
+                const userNameSpan = userItem.querySelector('.user-name');
+                if (userNameSpan) {
+                    userNameSpan.textContent = fullName;
+                }
+
+                // Update photo
+                const photoElement = userItem.querySelector('.user-photo, .default-avatar');
+                if (photoElement) {
+                    if (photoBase64) {
+                        if (photoElement.classList.contains('default-avatar')) {
+                            // Replace default avatar with image
+                            const img = document.createElement('img');
+                            img.className = 'user-photo';
+                            img.src = 'data:image/jpeg;base64,' + photoBase64;
+                            img.alt = fullName;
+                            photoElement.replaceWith(img);
+                        } else {
+                            // Update existing image
+                            photoElement.src = 'data:image/jpeg;base64,' + photoBase64;
+                        }
+                    }
+                }
+
+                // Update data attributes
+                userItem.setAttribute('data-user-name', fullName);
+                userItem.setAttribute('data-user-photo', photoBase64 || '');
+            }
+        }
+
+        function updateGroupInList(groupId, groupName, groupImageBase64) {
+            const groupItem = document.querySelector(`.user-item[data-group-id="${groupId}"]`);
+            if (groupItem) {
+                // Update name
+                const groupNameSpan = groupItem.querySelector('.user-name');
+                if (groupNameSpan) {
+                    groupNameSpan.textContent = groupName;
+                }
+
+                // Update photo
+                const photoElement = groupItem.querySelector('.user-photo, .default-avatar');
+                if (photoElement) {
+                    if (groupImageBase64) {
+                        if (photoElement.classList.contains('default-avatar')) {
+                            // Replace default avatar with image
+                            const img = document.createElement('img');
+                            img.className = 'user-photo';
+                            img.src = 'data:image/jpeg;base64,' + groupImageBase64;
+                            img.alt = groupName;
+                            photoElement.replaceWith(img);
+                        } else {
+                            // Update existing image
+                            photoElement.src = 'data:image/jpeg;base64,' + groupImageBase64;
+                        }
+                    }
+                }
+
+                // Update data attributes
+                groupItem.setAttribute('data-group-name', groupName);
+                groupItem.setAttribute('data-group-photo', groupImageBase64 || '');
+            }
+        }
+
+        function updateUnreadDotsRealTime(chatId, chatType) {
+            const chatKey = chatType === 'user' ? `user_${chatId}` : `group_${chatId}`;
+
+            // Increment unread count
+            if (!unreadMessages[chatKey]) {
+                unreadMessages[chatKey] = 0;
+            }
+            unreadMessages[chatKey]++;
+
+            // Update UI
+            updateUnreadDots();
+
+            // Play notification sound if chat is not active
+            if (!(currentReceiverId === chatId && currentReceiverType === chatType)) {
+                playNotificationSound();
+            }
+        }
+
+        function showTypingIndicator(userId, isTyping) {
+            const typingIndicator = document.getElementById('typingIndicator');
+            if (!typingIndicator) {
+                // Create typing indicator if it doesn't exist
+                const indicator = document.createElement('div');
+                indicator.id = 'typingIndicator';
+                indicator.className = 'typing-indicator';
+                indicator.textContent = 'Typing...';
+                document.getElementById('chatMessages').appendChild(indicator);
+            }
+
+            if (isTyping) {
+                typingIndicator.style.display = 'block';
+            } else {
+                typingIndicator.style.display = 'none';
+            }
+        }
+
+        function updateUserOnlineStatus(userId, isOnline) {
+            const userItem = document.querySelector(`.user-item[data-user-id="${userId}"]`);
+            if (userItem) {
+                // Add/remove online indicator
+                let onlineIndicator = userItem.querySelector('.online-indicator');
+                if (!onlineIndicator) {
+                    onlineIndicator = document.createElement('div');
+                    onlineIndicator.className = 'online-indicator';
+                    userItem.appendChild(onlineIndicator);
+                }
+
+                onlineIndicator.style.background = isOnline ? '#48bb78' : '#a0aec0';
+                onlineIndicator.title = isOnline ? 'Online' : 'Offline';
+            }
+        }
+
+        function playNotificationSound() {
+            const audio = new Audio('/sounds/notification.mp3');
+            audio.play().catch(e => console.log('Cannot play notification sound:', e));
+        }
+
+        function refreshChatList() {
+            // Reload chat list from server
+            fetch('/UserDashboard/GetUpdatedChatList')
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        updateGroupChatHeader(data.groupName, data.groupPhotoBase64);
-
-                        // Update the chat item in the list
-                        const groupItem = document.querySelector(`.user-item[data-group-id="${groupId}"]`);
-                        if (groupItem) {
-                            groupItem.setAttribute('data-group-name', data.groupName);
-                            const userNameSpan = groupItem.querySelector('.user-name');
-                            if (userNameSpan) {
-                                userNameSpan.textContent = data.groupName;
-                            }
-
-                            if (data.groupPhotoBase64) {
-                                groupItem.setAttribute('data-group-photo', data.groupPhotoBase64);
-                                const img = groupItem.querySelector('img');
-                                if (img) {
-                                    img.src = 'data:image/jpeg;base64,' + data.groupPhotoBase64;
-                                }
-                            }
-                        }
+                        updateChatListUI(data.chats);
                     }
-                });
+                })
+                .catch(error => console.error('Error refreshing chat list:', error));
         }
 
-        // ========================================
-        // INITIALIZATION
-        // ========================================
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('=== PAGE LOADED ===');
+        function updateChatListUI(chats) {
+            const userList = document.getElementById('userList');
+            if (!userList) return;
 
-            // Update local variables to match window variables
-            currentReceiverId = window.currentReceiverId;
-            currentReceiverType = window.currentReceiverType;
-            currentFilter = 'all';
-            autoRefreshInterval = null;
+            userList.innerHTML = '';
 
-            console.log('Initial receiver:', currentReceiverId, currentReceiverType);
+            chats.forEach(chat => {
+                const li = document.createElement('li');
+                li.className = `user-item ${chat.isSelected ? 'active' : ''}`;
 
-            // Initialize other components
-            initializeSignalR();
-            initEmojiGrid();
-            setupMessageInput();
-            setupScrollHandling();
-            restoreUserListScroll();
-            loadUserProfile();
+                if (chat.chatType === 'user') {
+                    li.setAttribute('data-user-id', chat.chatId);
+                    li.setAttribute('data-user-name', chat.chatName);
+                    li.setAttribute('data-user-photo', chat.photoBase64 || '');
+                    li.setAttribute('data-last-message-time', chat.lastMessageTime);
+                    li.setAttribute('data-is-group', 'false');
+                    li.onclick = () => selectUser(chat.chatId, chat.chatName, chat.photoBase64);
+                } else {
+                    li.setAttribute('data-group-id', chat.chatId);
+                    li.setAttribute('data-group-name', chat.chatName);
+                    li.setAttribute('data-group-photo', chat.photoBase64 || '');
+                    li.setAttribute('data-last-activity-time', chat.lastMessageTime);
+                    li.setAttribute('data-is-group', 'true');
+                    li.onclick = () => selectGroup(chat.chatId, chat.chatName, chat.photoBase64);
+                }
 
-            // Now initialize UnreadManager
-            if (window.unreadManager) {
-                setTimeout(() => {
-                    window.unreadManager.init();
-                }, 200);
-            } else {
-                console.warn('UnreadManager not available');
-            }
+                // Avatar
+                let avatarHtml;
+                if (chat.photoBase64) {
+                    avatarHtml = `<img src="data:image/jpeg;base64,${chat.photoBase64}" alt="${chat.chatName}" class="user-photo">`;
+                } else {
+                    const initials = chat.chatType === 'user'
+                        ? chat.chatName.split(' ').map(n => n[0]).join('')
+                        : '👥';
+                    avatarHtml = `<div class="default-avatar">${initials}</div>`;
+                }
 
-            // Apply initial filter
-            filterChats();
-            loadUnifiedChats().then(() => restoreChatOrderFromStorage());
+                // Unread dot
+                const unreadDot = chat.unreadCount > 0
+                    ? `<div class="unread-dot" title="${chat.unreadCount} unread message${chat.unreadCount > 1 ? 's' : ''}"></div>`
+                    : '';
 
-            // Sort chat list once on load
-            sortChatList();
-        });
+                li.innerHTML = `
+                    ${avatarHtml}
+                    <span class="user-name">${chat.chatName}</span>
+                    ${unreadDot}
+                `;
 
-        // ========================================
-        // HELPER FUNCTIONS
-        // ========================================
-        function getTimeAgo(dateTime) {
-            const date = new Date(dateTime);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMins = Math.floor(diffMs / 60000);
-            const diffHours = Math.floor(diffMins / 60);
-            const diffDays = Math.floor(diffHours / 24);
-
-            if (diffMins < 1) return 'Just now';
-            if (diffMins < 60) return `${diffMins}m ago`;
-            if (diffHours < 24) return `${diffHours}h ago`;
-            if (diffDays < 7) return `${diffDays}d ago`;
-            return date.toLocaleDateString();
-        }
-
-        function formatTime(dateString) {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMins = Math.floor(diffMs / 60000);
-
-            if (diffMins < 1) return 'Just now';
-            if (diffMins < 60) return `${diffMins}m ago`;
-            if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-            return date.toLocaleDateString();
-        }
-
-        function loadChat(chatType, chatId) {
-            let url;
-            if (chatType === 'user') {
-                url = `/UserDashboard/Index?selectedUserId=${chatId}`;
-            } else {
-                url = `/UserDashboard/Index?selectedGroupId=${chatId}`;
-            }
-            window.location.href = url;
+                userList.appendChild(li);
+            });
         }
 
         // ========================================
@@ -2731,13 +2842,12 @@
             videoCallHub.on('UserBusy', handleUserBusy);
             videoCallHub.on('CallError', handleCallError);
 
-            // Add group call handlers
-            videoCallHub.on('GroupCallUpdate', handleGroupCallUpdate);
-            videoCallHub.on('GroupCallEnded', handleGroupCallEnded);
-            videoCallHub.on('UserOnlineStatus', function(userId, isOnline) { });
+                  // Add group call handlers
+        videoCallHub.on('GroupCallUpdate', handleGroupCallUpdate);
+        videoCallHub.on('GroupCallEnded', handleGroupCallEnded);
         }
 
-        let groupCallParticipants = new Map();
+                let groupCallParticipants = new Map();
 
         async function initiateVideoCall() {
             try {
@@ -3577,280 +3687,52 @@
         // CHAT FUNCTIONALITY
         // ========================================
 
-                              function selectUser(userId, userName, userPhotoBase64) {
-            console.log('=== SELECT USER FUNCTION ===');
-            console.log('Selecting user:', userId, userName);
+        function selectUser(userId, userName, userPhotoBase64) {
+            console.log('Selecting user:', userId);
+            saveUserListScroll();
+            stopAutoRefresh();
 
-            try {
-                // Store scroll position
-                saveUserListScroll();
+            document.querySelectorAll('.user-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
 
-                // Stop auto refresh
-                if (typeof stopAutoRefresh === 'function') {
-                    stopAutoRefresh();
-                }
+                    // Remove dot from selected chat immediately
+        const activeItem = event.currentTarget;
+        const dot = activeItem.querySelector('.unread-dot');
+        if (dot) {
+            dot.remove();
+            console.log('Removed dot from selected chat');
+        }
 
-                // Remove active class from all items
-                document.querySelectorAll('.user-item').forEach(item => {
-                    item.classList.remove('active');
-                });
-
-                // Add active class to clicked item
-                if (event && event.currentTarget) {
-                    event.currentTarget.classList.add('active');
-                }
-
-                // Update GLOBAL variables
-                window.currentReceiverId = userId;
-                window.currentReceiverType = 'user';
-
-                // Update local variables for consistency
-                currentReceiverId = userId;
-                currentReceiverType = 'user';
-
-                console.log('Updated receiver - ID:', currentReceiverId, 'Type:', currentReceiverType);
-
-                // Update chat header
-                updateUserChatHeader(userName, userPhotoBase64);
-
-                // Initialize chat
-                initializeUserChat(userId);
-
-                // Add video call button
-                addVideoCallButton();
-
-                // Mark as read in UnreadManager
-                if (window.unreadManager && typeof window.unreadManager.setCurrentChat === 'function') {
-                    window.unreadManager.setCurrentChat(userId, 'user');
-                } else {
-                    console.warn('UnreadManager not available');
-                }
-
-                // Mark as read on server
-                fetch(`/UserDashboard/MarkChatAsRead?chatType=user&chatId=${userId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && window.unreadManager && typeof window.unreadManager.syncWithServer === 'function') {
-                        window.unreadManager.syncWithServer();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error marking chat as read:', error);
-                });
-
-                console.log('User selection completed successfully');
-
-            } catch (error) {
-                console.error('Error in selectUser function:', error);
-            }
+            updateUserChatHeader(userName, userPhotoBase64);
+            initializeUserChat(userId);
+            addVideoCallButton();
         }
 
         function selectGroup(groupId, groupName, groupPhotoBase64) {
-            console.log('=== SELECT GROUP FUNCTION ===');
-            console.log('Selecting group:', groupId, groupName);
+            console.log('Selecting group:', groupId);
+            saveUserListScroll();
+            stopAutoRefresh();
 
-            try {
-                // Store scroll position
-                saveUserListScroll();
-
-                // Stop auto refresh
-                if (typeof stopAutoRefresh === 'function') {
-                    stopAutoRefresh();
-                }
-
-                // Remove active class from all items
-                document.querySelectorAll('.user-item').forEach(item => {
-                    item.classList.remove('active');
-                });
-
-                // Add active class to clicked item
-                if (event && event.currentTarget) {
-                    event.currentTarget.classList.add('active');
-                }
-
-                // Update GLOBAL variables
-                window.currentReceiverId = groupId;
-                window.currentReceiverType = 'group';
-
-                // Update local variables for consistency
-                currentReceiverId = groupId;
-                currentReceiverType = 'group';
-
-                console.log('Updated receiver - ID:', currentReceiverId, 'Type:', currentReceiverType);
-
-                // Update chat header
-                updateGroupChatHeader(groupName, groupPhotoBase64);
-
-                // Initialize chat
-                initializeGroupChat(groupId);
-
-                // Mark as read in UnreadManager
-                if (window.unreadManager && typeof window.unreadManager.setCurrentChat === 'function') {
-                    window.unreadManager.setCurrentChat(groupId, 'group');
-                } else {
-                    console.warn('UnreadManager not available');
-                }
-
-                // Mark as read on server
-                fetch(`/UserDashboard/MarkChatAsRead?chatType=group&chatId=${groupId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && window.unreadManager && typeof window.unreadManager.syncWithServer === 'function') {
-                        window.unreadManager.syncWithServer();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error marking chat as read:', error);
-                });
-
-                console.log('Group selection completed successfully');
-
-            } catch (error) {
-                console.error('Error in selectGroup function:', error);
-            }
-        }
-
-                                     function initializeUserChat(userId) {
-            console.log('=== INITIALIZING USER CHAT ===');
-            console.log('User ID:', userId);
-
-            // Reset scroll behavior - always start at latest message
-            shouldAutoScroll = true;
-
-            // Update both local and global variables
-            window.currentReceiverId = userId;
-            window.currentReceiverType = 'user';
-            currentReceiverId = userId;
-            currentReceiverType = 'user';
-
-            // Show chat interface
-            const noChatSelected = document.getElementById('noChatSelected');
-            const chatHeader = document.getElementById('chatHeader');
-            const chatMessages = document.getElementById('chatMessages');
-            const chatInputContainer = document.getElementById('chatInputContainer');
-            const groupManagementButtons = document.getElementById('groupManagementButtons');
-
-            if (noChatSelected) noChatSelected.style.display = 'none';
-            if (chatHeader) chatHeader.style.display = 'flex';
-            if (chatMessages) chatMessages.style.display = 'block';
-            if (chatInputContainer) chatInputContainer.style.display = 'block';
-            if (groupManagementButtons) groupManagementButtons.style.display = 'none';
-
-            console.log('Chat interface elements shown for user chat');
-
-            // Load messages - this will automatically scroll to latest
-            console.log('Attempting to load user messages...');
-            loadMessages();
-
-            // Start auto-refresh
-            startAutoRefresh();
-        }
-
-        function initializeGroupChat(groupId) {
-            console.log('=== INITIALIZING GROUP CHAT ===');
-            console.log('Group ID:', groupId);
-
-            // Reset scroll behavior - always start at latest message
-            shouldAutoScroll = true;
-
-            // Update both local and global variables
-            window.currentReceiverId = groupId;
-            window.currentReceiverType = 'group';
-            currentReceiverId = groupId;
-            currentReceiverType = 'group';
-
-            // Show chat interface
-            const noChatSelected = document.getElementById('noChatSelected');
-            const chatHeader = document.getElementById('chatHeader');
-            const chatMessages = document.getElementById('chatMessages');
-            const chatInputContainer = document.getElementById('chatInputContainer');
-            const groupManagementButtons = document.getElementById('groupManagementButtons');
-
-            if (noChatSelected) noChatSelected.style.display = 'none';
-            if (chatHeader) chatHeader.style.display = 'flex';
-            if (chatMessages) chatMessages.style.display = 'block';
-            if (chatInputContainer) chatInputContainer.style.display = 'block';
-            if (groupManagementButtons) groupManagementButtons.style.display = 'flex';
-
-            console.log('Chat interface elements shown for group chat');
-
-            // Load messages - this will automatically scroll to latest
-            console.log('Attempting to load group messages...');
-            loadMessages();
-
-            // Start auto-refresh
-            startAutoRefresh();
-        if (chatHubConnection && chatHubConnection.state === signalR.HubConnectionState.Connected) {
-               chatHubConnection.invoke('JoinGroupChat', groupId);
-           }
-        }
-
-                              function sendTextMessage() {
-            const messageInput = document.getElementById('messageInput');
-            if (!messageInput) return;
-
-            let messageText = messageInput.innerHTML.trim();
-
-            // Ignore empty messages
-            if (!messageText || messageText === '<br>' || messageText === '<div><br></div>') {
-                return;
-            }
-
-            if (!currentReceiverId) return;
-
-            const sendBtn = document.getElementById('sendBtn');
-            if (sendBtn) sendBtn.disabled = true;
-
-            const url = currentReceiverType === 'user'
-                ? '/UserDashboard/SendMessage'
-                : '/UserDashboard/SendGroupMessage';
-
-            const body = currentReceiverType === 'user'
-                ? `receiverId=${currentReceiverId}&messageText=${encodeURIComponent(messageText)}`
-                : `groupId=${currentReceiverId}&messageText=${encodeURIComponent(messageText)}`;
-
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: body
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Reset input
-                    messageInput.innerHTML = '';
-                    resetInputHeight();
-
-                    // Note: Real-time notification is sent by server,
-                    // so other users will be notified automatically
-
-                    // Move chat to top instantly
-                    moveChatToTop(currentReceiverId, currentReceiverType);
-
-                    // Load messages to show the new message
-                    loadMessages();
-                } else {
-                    alert('Failed to send message: ' + data.message);
-                }
-                if (sendBtn) sendBtn.disabled = false;
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                if (sendBtn) sendBtn.disabled = false;
+            document.querySelectorAll('.user-item').forEach(item => {
+                item.classList.remove('active');
             });
+            event.currentTarget.classList.add('active');
+
+                    // Remove dot from selected chat immediately
+        const activeItem = event.currentTarget;
+        const dot = activeItem.querySelector('.unread-dot');
+        if (dot) {
+            dot.remove();
+            console.log('Removed dot from selected chat');
         }
 
-        function addVideoCallButton() {
+            updateGroupChatHeader(groupName, groupPhotoBase64);
+            initializeGroupChat(groupId);
+        }
+
+               function addVideoCallButton() {
             const chatHeader = document.getElementById('chatHeader');
             if (!chatHeader) return;
 
@@ -3874,8 +3756,12 @@
             }
         }
 
-        function initializeUserChat(userId) {
+                function initializeUserChat(userId) {
             console.log('Initializing user chat:', userId);
+
+            // Reset scroll state
+            isUserScrolling = false;
+            isAtBottom = true;
 
             currentReceiverId = userId;
             currentReceiverType = 'user';
@@ -3896,17 +3782,31 @@
                 currentUserItem.classList.add('active');
             }
 
+            // Initialize scroll handling for this chat
+            initializeScrollHandling();
 
+            // Mark messages as read and load
+            markMessagesAsRead().then(success => {
+                loadMessages();
 
-            // Load messages
-            loadMessages();
+                // FORCE SCROLL TO BOTTOM ON CHAT OPEN
+                setTimeout(() => {
+                    scrollToBottom(true);
+                }, 100);
 
-            // Start auto-refresh
-            startAutoRefresh();
+                startAutoRefresh();
+            });
+
+            // Add video call button
+            addVideoCallButton();
         }
 
         function initializeGroupChat(groupId) {
             console.log('Initializing group chat:', groupId);
+
+            // Reset scroll state
+            isUserScrolling = false;
+            isAtBottom = true;
 
             currentReceiverId = groupId;
             currentReceiverType = 'group';
@@ -3923,13 +3823,25 @@
                 item.classList.remove('active');
             });
 
+            const currentGroupItem = document.querySelector(`.user-item[data-group-id="${groupId}"]`);
+            if (currentGroupItem) {
+                currentGroupItem.classList.add('active');
+            }
 
+            // Initialize scroll handling for this chat
+            initializeScrollHandling();
 
-            // Load messages
-            loadMessages();
+            // Mark messages as read and load
+            markMessagesAsRead().then(success => {
+                loadMessages();
 
-            // Start auto-refresh
-            startAutoRefresh();
+                // FORCE SCROLL TO BOTTOM ON CHAT OPEN
+                setTimeout(() => {
+                    scrollToBottom(true);
+                }, 100);
+
+                startAutoRefresh();
+            });
         }
 
         function updateUserChatHeader(userName, userPhotoBase64) {
@@ -3981,83 +3893,53 @@
         }
 
                 function loadMessages() {
-            if (!currentReceiverId) {
-                console.error('No receiver ID selected');
-                return;
-            }
+            if (!currentReceiverId) return;
 
-            console.log('Loading messages for:', currentReceiverId, 'Type:', currentReceiverType);
-
-            // Construct the correct URL based on chat type
-            let url;
-            if (currentReceiverType === 'user') {
-                url = `/UserDashboard/GetMessages?otherUserId=${currentReceiverId}`;
-            } else if (currentReceiverType === 'group') {
-                url = `/UserDashboard/GetGroupMessages?groupId=${currentReceiverId}`;
-            } else {
-                console.error('Unknown receiver type:', currentReceiverType);
-                return;
-            }
-
-            console.log('Fetching from URL:', url);
+            const url = currentReceiverType === 'user'
+                ? '/UserDashboard/GetMessages?otherUserId=' + currentReceiverId
+                : '/UserDashboard/GetGroupMessages?groupId=' + currentReceiverId;
 
             fetch(url)
-            .then(response => {
-                console.log('Response status:', response.status);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                console.log('Received data:', data);
                 if (data.success) {
+                    // Save current scroll position before updating messages
+                    if (chatMessagesElement) {
+                        scrollPositionBeforeUpdate = chatMessagesElement.scrollTop;
+                    }
+
                     updateChatMessages(data.messages);
-                } else {
-                    console.error('Failed to load messages:', data.message);
-                    document.getElementById('chatMessages').innerHTML =
-                        '<div class="no-messages">Failed to load messages. Please try again.</div>';
+
+                    // After updating messages, restore position or scroll to bottom
+                    setTimeout(() => {
+                        if (isUserScrolling && !isAtBottom) {
+                            // User was reading older messages, maintain their position
+                            if (chatMessagesElement) {
+                                chatMessagesElement.scrollTop = scrollPositionBeforeUpdate;
+                            }
+                        } else {
+                            // User is at bottom or just opened chat, show latest
+                            scrollToBottom(true);
+                        }
+                    }, 10);
                 }
             })
-            .catch(error => {
-                console.error('Error loading messages:', error);
-                document.getElementById('chatMessages').innerHTML =
-                    '<div class="no-messages">Error loading messages. Please try again.</div>';
-            });
+            .catch(error => console.error('Error loading messages:', error));
         }
 
-                        function updateChatMessages(messages) {
+        function updateChatMessages(messages) {
             const chatMessages = document.getElementById('chatMessages');
             if (!chatMessages) return;
 
-            // Store current scroll position BEFORE updating
-            const currentScrollPosition = chatMessages.scrollTop;
-            const currentScrollHeight = chatMessages.scrollHeight;
-            const isInitialLoad = chatMessages.innerHTML === '';
-
-            // Clear messages
             chatMessages.innerHTML = '';
 
             if (messages.length === 0) {
                 chatMessages.innerHTML = '<div class="no-messages">No messages yet. Start a conversation!</div>';
-
-                // On initial load, ensure we're at top
-                if (isInitialLoad) {
-                    setTimeout(() => {
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }, 0);
-                }
                 return;
             }
 
             let currentDate = '';
-
-            // Reverse the messages so newest appears at bottom (for proper scrolling)
-            const sortedMessages = [...messages].sort((a, b) =>
-                new Date(a.sentAt) - new Date(b.sentAt)
-            );
-
-            sortedMessages.forEach(message => {
+            messages.forEach(message => {
                 const messageDate = new Date(message.sentAt).toDateString();
 
                 if (messageDate !== currentDate) {
@@ -4112,7 +3994,7 @@
                     if (message.isImage) {
                         messageContent = `
                             <div class="image-message" onclick="openImageModal('${message.imagePath}')">
-                                <img src="${message.imagePath}" alt="Shared image" onerror="this.style.display='none'" />
+                                <img src="${message.imagePath}" alt="Shared image" />
                             </div>
                         `;
                     } else {
@@ -4153,52 +4035,10 @@
                 chatMessages.appendChild(messageDiv);
             });
 
-            // Handle scroll position based on user behavior
-                    // At the end of updateChatMessages function, add:
-        setTimeout(() => {
-            const newScrollHeight = chatMessages.scrollHeight;
-
-            if (isInitialLoad || shouldAutoScroll) {
-                // Initial load or user is at bottom - scroll to latest message
+            // Scroll to bottom
+            setTimeout(() => {
                 chatMessages.scrollTop = chatMessages.scrollHeight;
-                shouldAutoScroll = true;
-            } else if (isUserScrolling) {
-                // User is manually scrolling - maintain exact position
-                const scrollDifference = newScrollHeight - currentScrollHeight;
-                chatMessages.scrollTop = currentScrollPosition + scrollDifference;
-
-                // Show "scroll to latest" button if new messages arrived
-                if (scrollDifference > 0) {
-                    updateScrollToLatestButton();
-                }
-            } else {
-                // Normal refresh but user isn't at bottom - maintain relative position
-                chatMessages.scrollTop = currentScrollPosition;
-
-                // Show "scroll to latest" button if new messages arrived
-                if (newScrollHeight > currentScrollHeight) {
-                    updateScrollToLatestButton();
-                }
-            }
-        }, 0);
-        }
-
-        // Helper function to check if user is near bottom
-        function isNearBottom(threshold = 100) {
-            const chatMessages = document.getElementById('chatMessages');
-            if (!chatMessages) return true;
-
-            const position = chatMessages.scrollTop + chatMessages.clientHeight;
-            const height = chatMessages.scrollHeight;
-            return (height - position) <= threshold;
-        }
-
-        // Helper function to scroll to bottom
-        function scrollToBottom(element) {
-            if (element) {
-                element.scrollTop = element.scrollHeight;
-                shouldAutoScroll = true; // Reset flag after scrolling to bottom
-            }
+            }, 0);
         }
 
         function sendMessage() {
@@ -4209,7 +4049,7 @@
             }
         }
 
-        function sendTextMessage() {
+                function sendTextMessage() {
             const messageInput = document.getElementById('messageInput');
             if (!messageInput) return;
 
@@ -4245,13 +4085,10 @@
                     messageInput.innerHTML = '';
                     resetInputHeight();
 
-                    // Move chat to top INSTANTLY without any backend delay
+                    // Move chat to top in list
                     moveChatToTop(currentReceiverId, currentReceiverType);
 
-                    // Scroll to bottom
-                    shouldAutoScroll = true;
-
-                    // Load messages to show the new message
+                    // Load messages - scrollToBottom will handle scrolling appropriately
                     loadMessages();
                 } else {
                     alert('Failed to send message: ' + data.message);
@@ -4323,13 +4160,11 @@
             if (chatItem) {
                 // Update timestamp to current time for proper sorting
                 const currentTime = new Date().toISOString();
-                chatItem.setAttribute('data-timestamp', currentTime);
                 if (chatType === 'user') {
                     chatItem.setAttribute('data-last-message-time', currentTime);
                 } else {
                     chatItem.setAttribute('data-last-activity-time', currentTime);
                 }
-                persistChatTimestamp(String(chatId), chatType, currentTime);
 
                 // Move to top instantly
                 userList.insertBefore(chatItem, userList.firstChild);
@@ -4458,17 +4293,193 @@
             if (filePreview) filePreview.style.display = 'none';
         }
 
-            isEditorActive = false;
-            isEmojiPickerActive = false;
-            selectedFile = null;
+        // ========================================
+        // UNREAD MESSAGES MANAGEMENT
+        // ========================================
 
+                function loadUnreadMessagesCount() {
+            console.log('Loading unread messages count...');
 
+            return fetch('/UserDashboard/GetUnreadCounts')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Unread counts received:', data.unreadCounts);
+
+                    // Clear existing unread messages
+                    unreadMessages = {};
+
+                    // Rebuild unreadMessages dictionary with proper keys
+                    data.unreadCounts.forEach(item => {
+                        const chatKey = item.type === 'user' ? `user_${item.id}` : `group_${item.id}`;
+                        unreadMessages[chatKey] = item.count;
+                    });
+
+                    console.log('Processed unreadMessages:', unreadMessages);
+
+                    // Update dots
+                    updateUnreadDots();
+
+                    return true;
+                } else {
+                    console.error('Failed to load unread counts');
+                    return false;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading unread messages count:', error);
+                return false;
+            });
+        }
+
+                function updateUnreadDots() {
+            console.log('=== UPDATING UNREAD DOTS ===');
+            console.log('Current unreadMessages:', unreadMessages);
+
+            // Remove ALL existing dots first
+            document.querySelectorAll('.unread-dot').forEach(dot => {
+                dot.remove();
+            });
+
+            // Add dots for chats with unread messages
+            Object.keys(unreadMessages).forEach(chatKey => {
+                const count = unreadMessages[chatKey];
+
+                if (count > 0) {
+                    console.log(`Processing chat ${chatKey} with ${count} unread messages`);
+
+                    // Parse chatKey to get type and ID
+                    const isGroup = chatKey.startsWith('group_');
+                    const chatId = chatKey.replace('user_', '').replace('group_', '');
+
+                    console.log(`Parsed: isGroup=${isGroup}, chatId=${chatId}`);
+
+                    let userItem = null;
+
+                    if (isGroup) {
+                        // Find group item
+                        userItem = document.querySelector(`.user-item[data-group-id="${chatId}"]`);
+                        console.log(`Looking for group with ID ${chatId}:`, userItem ? 'Found' : 'Not found');
+                    } else {
+                        // Find user item
+                        userItem = document.querySelector(`.user-item[data-user-id="${chatId}"]`);
+                        console.log(`Looking for user with ID ${chatId}:`, userItem ? 'Found' : 'Not found');
+                    }
+
+                    if (userItem) {
+                        const isActive = userItem.classList.contains('active');
+                        console.log(`Chat ${chatId} (${isGroup ? 'GROUP' : 'USER'}) - Item found, is active: ${isActive}`);
+
+                        if (!isActive) {
+                            // Check if dot already exists
+                            const existingDot = userItem.querySelector('.unread-dot');
+                            if (!existingDot) {
+                                // Add new dot
+                                const dot = document.createElement('div');
+                                dot.className = 'unread-dot';
+                                dot.title = `${count} unread message${count > 1 ? 's' : ''}`;
+
+                                // Position the dot
+                                userItem.style.position = 'relative';
+                                userItem.appendChild(dot);
+
+                                console.log(`✓ Added dot for ${isGroup ? 'GROUP' : 'USER'} chat: ${chatId}, count: ${count}`);
+                            }
+                        } else {
+                            // If chat is active, remove any existing dot
+                            const existingDot = userItem.querySelector('.unread-dot');
+                            if (existingDot) {
+                                existingDot.remove();
+                                console.log(`✗ Removed dot from active chat: ${chatId}`);
+                            }
+                        }
+                    } else {
+                        console.log(`✗ No user/group item found for chat ID: ${chatId}`);
+                    }
+                }
+            });
+
+            // Debug: Count how many dots are actually in the DOM
+            const dotCount = document.querySelectorAll('.unread-dot').length;
+            console.log(`Total dots in DOM after update: ${dotCount}`);
+        }
+
+                function markMessagesAsRead() {
+            if (!currentReceiverId || isMarkingAsRead) {
+                console.log('Skipping mark as read - no receiver or already marking');
+                return Promise.resolve(false);
+            }
+
+            isMarkingAsRead = true;
+            console.log('Marking messages as read for:', currentReceiverId, 'Type:', currentReceiverType);
+
+            // Remove dot from active chat immediately in UI
+            const activeItem = document.querySelector('.user-item.active');
+            if (activeItem) {
+                const dot = activeItem.querySelector('.unread-dot');
+                if (dot) {
+                    dot.remove();
+                    console.log('Removed dot from active chat immediately');
+                }
+            }
+
+            const url = currentReceiverType === 'user'
+                ? '/UserDashboard/MarkMessagesAsRead?otherUserId=' + currentReceiverId
+                : '/UserDashboard/MarkGroupMessagesAsRead?groupId=' + currentReceiverId;
+
+            console.log('Calling URL:', url);
+
+            return fetch(url, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Mark as read response:', data);
+
+                if (data.success) {
+                    // Update unread counts using the response data
+                    if (data.unreadMessages) {
+                        unreadMessages = data.unreadMessages;
+                        console.log('Updated unreadMessages from response:', unreadMessages);
+                    } else {
+                        // Remove current chat from unread counts
+                        const chatKey = currentReceiverType === 'user'
+                            ? `user_${currentReceiverId}`
+                            : `group_${currentReceiverId}`;
+                        delete unreadMessages[chatKey];
+                        console.log('Removed current chat from unreadMessages:', chatKey);
+                    }
+
+                    // Force update of dots
+                    updateUnreadDots();
+
+                    // Force refresh to ensure consistency
+                    setTimeout(() => {
+                        loadUnreadMessagesCount().then(success => {
+                            if (success) {
+                                console.log('Successfully refreshed unread counts after marking as read');
+                            }
+                        });
+                    }, 100);
+                } else {
+                    console.log('Failed to mark messages as read');
+                }
+
+                isMarkingAsRead = false;
+                return data.success;
+            })
+            .catch(error => {
+                console.error('Error marking messages as read:', error);
+                isMarkingAsRead = false;
+                return false;
+            });
+        }
 
         // ========================================
         // AUTO-REFRESH SYSTEM
         // ========================================
 
-                        function startAutoRefresh() {
+                function startAutoRefresh() {
             // Clear any existing interval
             if (autoRefreshInterval) {
                 clearInterval(autoRefreshInterval);
@@ -4478,82 +4489,18 @@
             autoRefreshInterval = setInterval(function() {
                 // Only load messages if we have an active chat
                 if (currentReceiverId && currentReceiverType) {
-                    // Check if user is currently scrolling
-                    if (!isUserScrolling) {
-                        loadMessages();
-                    }
-                    // If user is scrolling, we still load messages but updateChatMessages
-                    // will handle maintaining scroll position
+                    loadMessages();
                 }
-            }, 3000); // Refresh every 3 seconds
+
+                // Update unread counts
+                loadUnreadMessagesCount();
+            }, 3000);
         }
 
         function stopAutoRefresh() {
-            console.log('Stopping auto-refresh');
-            if (autoRefreshInterval !== null && autoRefreshInterval !== undefined) {
+            if (autoRefreshInterval) {
                 clearInterval(autoRefreshInterval);
                 autoRefreshInterval = null;
-            }
-        }
-
-                // Helper function to check if chat should auto-scroll
-        function shouldScrollToBottom() {
-            const chatMessages = document.getElementById('chatMessages');
-            if (!chatMessages) return true;
-
-            // Check if user is very close to bottom (within 50px)
-            const threshold = 50;
-            const position = chatMessages.scrollTop + chatMessages.clientHeight;
-            const height = chatMessages.scrollHeight;
-            return (height - position) <= threshold;
-        }
-
-        // Helper to force scroll to latest message
-        function scrollToLatestMessage() {
-            const chatMessages = document.getElementById('chatMessages');
-            if (chatMessages) {
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-                shouldAutoScroll = true;
-            }
-        }
-
-        // Add a "Scroll to latest" button for when user is reading old messages
-        function addScrollToLatestButton() {
-            const chatMessages = document.getElementById('chatMessages');
-            if (!chatMessages) return;
-
-            // Remove existing button if any
-            const existingButton = document.getElementById('scrollToLatestBtn');
-            if (existingButton) {
-                existingButton.remove();
-            }
-
-            // Check if user is not at bottom
-            if (!shouldScrollToBottom()) {
-                const button = document.createElement('div');
-                button.id = 'scrollToLatestBtn';
-                button.className = 'scroll-to-latest-btn';
-                button.innerHTML = '▼ New messages';
-                button.onclick = () => {
-                    scrollToLatestMessage();
-                    button.remove();
-                };
-
-                chatMessages.appendChild(button);
-
-                // Auto-remove after 10 seconds
-                setTimeout(() => {
-                    if (button.parentNode) {
-                        button.remove();
-                    }
-                }, 10000);
-            }
-        }
-
-        // Call this after each message update
-        function updateScrollToLatestButton() {
-            if (!shouldAutoScroll) {
-                addScrollToLatestButton();
             }
         }
 
@@ -4838,47 +4785,18 @@
             });
         }
 
-                        function resetGroupForm() {
-            console.log('Resetting group form');
-
-            // Safely reset form elements
-            const groupNameInput = document.getElementById('groupName');
-            if (groupNameInput) {
-                groupNameInput.value = '';
-            }
-
-            // Clear checkboxes safely
-            try {
-                const checkboxes = document.querySelectorAll('.member-checkbox');
-                if (checkboxes && checkboxes.length > 0) {
-                    checkboxes.forEach(cb => {
-                        if (cb) cb.checked = false;
-                    });
-                }
-            } catch (e) {
-                console.warn('Error clearing checkboxes:', e);
-            }
-
-            // Hide error/success messages
-            const groupNameError = document.getElementById('groupNameError');
-            const membersError = document.getElementById('membersError');
-            const groupSuccess = document.getElementById('groupSuccess');
-            const groupError = document.getElementById('groupError');
-
-            if (groupNameError) groupNameError.style.display = 'none';
-            if (membersError) membersError.style.display = 'none';
-            if (groupSuccess) groupSuccess.style.display = 'none';
-            if (groupError) groupError.style.display = 'none';
-
-            // Reset groupImageFile safely
+        function resetGroupForm() {
+            document.getElementById('groupName').value = '';
+            document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = false);
+            document.getElementById('groupNameError').style.display = 'none';
+            document.getElementById('membersError').style.display = 'none';
+            document.getElementById('groupSuccess').style.display = 'none';
+            document.getElementById('groupError').style.display = 'none';
             groupImageFile = null;
 
-            // Reset preview
             const groupImagePreview = document.getElementById('groupImagePreview');
-            if (groupImagePreview) {
-                groupImagePreview.className = 'group-image-placeholder';
-                groupImagePreview.innerHTML = '👥';
-            }
+            groupImagePreview.className = 'group-image-placeholder';
+            groupImagePreview.innerHTML = '👥';
         }
 
         function handleChatHeaderClick() {
@@ -5263,23 +5181,18 @@
         // FILTER & SORTING
         // ========================================
 
-                // This should be AFTER the variable declarations
         function setFilter(filter) {
-            console.log('Setting filter to:', filter);
             currentFilter = filter;
 
             // Update active button
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            if (event && event.target) {
-                event.target.classList.add('active');
-            }
+            event.target.classList.add('active');
 
             // Filter users and groups
             filterChats();
         }
-
 
         function filterChats() {
             const userItems = document.querySelectorAll('.user-item');
@@ -5345,7 +5258,7 @@
             }
         }
 
-        function sortChatList() {
+               function sortChatList() {
             const userList = document.getElementById('userList');
             if (!userList) return;
 
@@ -5354,125 +5267,32 @@
 
             // Sort by most recent activity
             allChatItems.sort((a, b) => {
-                // Try data-timestamp first, then specific attributes
-                const timeA = a.getAttribute('data-timestamp') || 
-                             a.getAttribute('data-last-message-time') || 
-                             a.getAttribute('data-last-activity-time') || 
-                             '0001-01-01T00:00:00';
-                             
-                const timeB = b.getAttribute('data-timestamp') || 
-                             b.getAttribute('data-last-message-time') || 
-                             b.getAttribute('data-last-activity-time') || 
-                             '0001-01-01T00:00:00';
-                
+                let timeA = '0001-01-01T00:00:00';
+                let timeB = '0001-01-01T00:00:00';
+
+                // Check if it's a user or group and get appropriate timestamp
+                if (a.dataset.userId) {
+                    // User chat - use last message time
+                    timeA = a.dataset.lastMessageTime || timeA;
+                } else if (a.dataset.groupId) {
+                    // Group chat - use last activity time
+                    timeA = a.dataset.lastActivityTime || timeA;
+                }
+
+                if (b.dataset.userId) {
+                    timeB = b.dataset.lastMessageTime || timeB;
+                } else if (b.dataset.groupId) {
+                    timeB = b.dataset.lastActivityTime || timeB;
+                }
+
+                // Sort descending (newest first)
                 return new Date(timeB) - new Date(timeA);
             });
 
             // Re-append in sorted order
             allChatItems.forEach(item => userList.appendChild(item));
-        }
 
-        function persistChatTimestamp(id, type, timestamp) {
-            try {
-                const key = 'chatLastActivity';
-                const raw = localStorage.getItem(key);
-                const map = raw ? JSON.parse(raw) : {};
-                map[`${type}:${id}`] = timestamp;
-                localStorage.setItem(key, JSON.stringify(map));
-            } catch (e) {}
-        }
-
-        function restoreChatOrderFromStorage() {
-            try {
-                const key = 'chatLastActivity';
-                const raw = localStorage.getItem(key);
-                if (!raw) return;
-                const map = JSON.parse(raw);
-                const list = document.getElementById('userList');
-                if (!list) return;
-                Object.keys(map).forEach(k => {
-                    const ts = map[k];
-                    const [type, id] = k.split(':');
-                    const selector = type === 'user'
-                        ? `.user-item[data-user-id="${id}"]`
-                        : `.user-item[data-group-id="${id}"]`;
-                    const item = list.querySelector(selector);
-                    if (item) {
-                        const serverTs = item.getAttribute('data-timestamp') ||
-                            item.getAttribute('data-last-message-time') ||
-                            item.getAttribute('data-last-activity-time') ||
-                            '0001-01-01T00:00:00';
-                        if (new Date(ts) > new Date(serverTs)) {
-                            item.setAttribute('data-timestamp', ts);
-                        }
-                    }
-                });
-                sortChatList();
-            } catch (e) {}
-        }
-
-        async function loadUnifiedChats() {
-            try {
-                const res = await fetch('/UserDashboard/GetUnifiedChats');
-                const data = await res.json();
-                if (!data.success) return;
-                const list = document.getElementById('userList');
-                if (!list) return;
-                list.innerHTML = '';
-                data.chats.forEach(c => {
-                    const li = document.createElement('li');
-                    li.className = 'user-item';
-                    li.setAttribute('data-timestamp', new Date(c.lastTime).toISOString());
-                    if (c.chatType === 'user') {
-                        li.setAttribute('data-user-id', c.chatId);
-                        li.setAttribute('data-user-name', c.chatName);
-                        li.setAttribute('data-is-group', 'false');
-                        li.onclick = () => selectUser(String(c.chatId), c.chatName, c.photoBase64 || '');
-                        if (c.photoBase64) {
-                            const img = document.createElement('img');
-                            img.src = 'data:image/jpeg;base64,' + c.photoBase64;
-                            img.alt = c.chatName;
-                            img.className = 'user-photo';
-                            li.appendChild(img);
-                        } else {
-                            const dv = document.createElement('div');
-                            dv.className = 'default-avatar';
-                            const parts = c.chatName.split(' ');
-                            const initials = (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
-                            dv.textContent = initials;
-                            li.appendChild(dv);
-                        }
-                    } else {
-                        li.setAttribute('data-group-id', c.chatId);
-                        li.setAttribute('data-group-name', c.chatName);
-                        li.setAttribute('data-is-group', 'true');
-                        li.style.position = 'relative';
-                        li.onclick = () => selectGroup(String(c.chatId), c.chatName, c.photoBase64 || '');
-                        if (c.photoBase64) {
-                            const img = document.createElement('img');
-                            img.src = 'data:image/jpeg;base64,' + c.photoBase64;
-                            img.alt = c.chatName;
-                            img.className = 'user-photo';
-                            li.appendChild(img);
-                        } else {
-                            const dv = document.createElement('div');
-                            dv.className = 'default-avatar';
-                            dv.textContent = '👥';
-                            li.appendChild(dv);
-                        }
-                    }
-                    const span = document.createElement('span');
-                    span.className = 'user-name';
-                    span.textContent = c.chatName;
-                    li.appendChild(span);
-                    list.appendChild(li);
-                });
-                sortChatList();
-                // Trigger unread dot sync immediately after loading chats
-                if (window.unreadManager) {
-                    window.unreadManager.syncWithServer();
-                }
-            } catch (e) { }
+            console.log('Chat list sorted by most recent activity');
         }
 
         // ========================================
@@ -5500,61 +5320,80 @@
             }
         });
 
+                // ========================================
+        // SCROLL MANAGEMENT VARIABLES
+        // ========================================
+        let isUserScrolling = false;
+        let scrollPositionBeforeUpdate = 0;
+        let isAtBottom = true;
+        let chatMessagesElement = null;
+
+        // ========================================
+        // INITIALIZE SCROLL HANDLING
+        // ========================================
+        function initializeScrollHandling() {
+            chatMessagesElement = document.getElementById('chatMessages');
+            if (!chatMessagesElement) return;
+
+            // Track when user is scrolling
+            chatMessagesElement.addEventListener('scroll', function() {
+                // Check if user is at the bottom
+                const currentScroll = this.scrollTop;
+                const maxScroll = this.scrollHeight - this.clientHeight;
+                const distanceFromBottom = maxScroll - currentScroll;
+
+                // User is considered "at bottom" if within 50px of bottom
+                isAtBottom = distanceFromBottom < 50;
+
+                // If user is NOT at bottom, they're manually scrolling
+                if (!isAtBottom) {
+                    isUserScrolling = true;
+                } else {
+                    isUserScrolling = false;
+                }
+            });
+
+            // Reset user scrolling flag when they reach bottom
+            chatMessagesElement.addEventListener('scrollend', function() {
+                const currentScroll = this.scrollTop;
+                const maxScroll = this.scrollHeight - this.clientHeight;
+
+                if (Math.abs(maxScroll - currentScroll) < 10) {
+                    isUserScrolling = false;
+                    isAtBottom = true;
+                }
+            });
+        }
+
+                // ========================================
+        // SCROLL TO BOTTOM (ONLY WHEN NEEDED)
+        // ========================================
+        function scrollToBottom(force = false) {
+            if (!chatMessagesElement || !chatMessagesElement.scrollHeight) return;
+
+            // Only scroll if forced OR user is already at bottom
+            if (force || (!isUserScrolling && isAtBottom)) {
+                requestAnimationFrame(() => {
+                    chatMessagesElement.scrollTop = chatMessagesElement.scrollHeight;
+                    isAtBottom = true;
+                    isUserScrolling = false;
+                });
+            }
+        }
+
         // ========================================
         // SCROLL HANDLING
         // ========================================
 
-                        function setupScrollHandling() {
+        function setupScrollHandling() {
             const chatMessages = document.getElementById('chatMessages');
             if (!chatMessages) return;
 
-            // Track user scroll behavior
-            let isUserScrolling = false;
-            let scrollTimeout = null;
-            let lastScrollPosition = 0;
-
-            // Reset flags when chat opens
-            shouldAutoScroll = true;
-            isUserScrolling = false;
-
             chatMessages.addEventListener('scroll', function() {
-                // Store current position
-                lastScrollPosition = chatMessages.scrollTop;
-
-                // If user is at the bottom, allow auto-scroll
-                const threshold = 50;
+                const threshold = 100;
                 const position = chatMessages.scrollTop + chatMessages.clientHeight;
                 const height = chatMessages.scrollHeight;
-                const isAtBottom = (height - position) <= threshold;
-
-                if (isAtBottom) {
-                    shouldAutoScroll = true;
-                    isUserScrolling = false;
-                } else {
-                    shouldAutoScroll = false;
-                    isUserScrolling = true;
-                }
-
-                // Clear timeout and reset
-                if (scrollTimeout) {
-                    clearTimeout(scrollTimeout);
-                }
-
-                // Set timeout to detect when scrolling stops
-                scrollTimeout = setTimeout(() => {
-                    isUserScrolling = false;
-                }, 200);
-            });
-
-            // Add touch events for mobile
-            chatMessages.addEventListener('touchstart', function() {
-                isUserScrolling = true;
-            });
-
-            chatMessages.addEventListener('touchend', function() {
-                setTimeout(() => {
-                    isUserScrolling = false;
-                }, 200);
+                shouldAutoScroll = (height - position) <= threshold;
             });
 
             const userListSection = document.querySelector('.user-list-section');

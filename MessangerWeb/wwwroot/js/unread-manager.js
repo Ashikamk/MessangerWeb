@@ -82,6 +82,7 @@ class UnreadManager {
 
                 // Add new dot if unread
                 if (count > 0) {
+                    item.classList.add('unread');
                     const dot = document.createElement('div');
                     dot.className = 'unread-dot';
                     dot.textContent = count > 9 ? '9+' : count;
@@ -106,6 +107,8 @@ class UnreadManager {
                     `;
                     item.style.position = 'relative';
                     item.appendChild(dot);
+                } else {
+                    item.classList.remove('unread');
                 }
             }
         });

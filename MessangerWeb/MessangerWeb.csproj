@@ -10,6 +10,7 @@
 		<PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
 		<PackageReference Include="Npgsql" Version="8.0.3" />
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
 		<PackageReference Include="System.Data.SqlClient" Version="4.8.5" />
 	</ItemGroup>
 

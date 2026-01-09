@@ -22,6 +22,7 @@ namespace MessangerWeb.Services
                     ChatName = user.FullName,
                     PhotoBase64 = user.PhotoBase64,
                     LastMessageTime = user.LastMessageTime,
+                    LastTime = user.LastMessageTime,
                     UnreadCount = user.UnreadCount,
                     IsSelected = selectedUserId == user.UserId
                 });
@@ -37,6 +38,7 @@ namespace MessangerWeb.Services
                     ChatName = group.GroupName,
                     PhotoBase64 = group.GroupImageBase64,
                     LastMessageTime = group.LastMessageTime,
+                    LastTime = group.LastMessageTime,
                     UnreadCount = group.UnreadCount,
                     IsSelected = selectedGroupId == group.GroupId.ToString()
                 });

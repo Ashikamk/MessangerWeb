@@ -1,6 +1,7 @@
 using System;
 using MessangerWeb.Services;
 using MessangerWeb.Hubs;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.SignalR;
@@ -49,6 +50,12 @@ namespace WebsiteApplication
                 options.KeepAliveInterval = TimeSpan.FromSeconds(15);
             });
 
+            builder.Services.AddSignalR(options =>
+            {
+                options.EnableDetailedErrors = true;
+                options.MaximumReceiveMessageSize = 1024 * 1024; // 1MB
+            });
+
             // Add logging
             builder.Services.AddLogging();
 
@@ -67,8 +74,8 @@ namespace WebsiteApplication
             // 3. Video Call Participant Service
             builder.Services.AddScoped<IVideoCallParticipantService, VideoCallParticipantService>();
 
-            // 4. User Service (if needed)
-            // builder.Services.AddSingleton<UserService>();
+            // 4. User Service
+            builder.Services.AddSingleton<UserService>();
 
             // Add HTTP context accessor
             builder.Services.AddHttpContextAccessor();
@@ -96,6 +103,7 @@ namespace WebsiteApplication
             app.UseAuthorization();
 
             app.UseSession();
+            app.MapHub<ChatHub>("/chatHub");
 
             // Map SignalR Hubs
             app.MapHub<VideoCallHub>("/videoCallHub", options =>
@@ -128,3 +136,4 @@ namespace WebsiteApplication
         }
     }
 }
+

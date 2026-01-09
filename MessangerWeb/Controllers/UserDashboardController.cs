@@ -23,25 +23,21 @@ namespace MessangerWeb.Controllers
         private readonly IVideoCallHistoryService _videoCallHistoryService;
         private readonly ILogger<UserDashboardController> _logger;
         private readonly IVideoCallParticipantService _videoCallParticipantService;
-        private readonly IHubContext<ChatHub> _hubContext;
-        private readonly INotificationService _notificationService;
+        private readonly IHubContext<ChatHub> _chatHub; // Changed from _hubContext to _chatHub for consistency
 
         public UserDashboardController(
-     IVideoCallHistoryService videoCallHistoryService,
-     IVideoCallParticipantService videoCallParticipantService,
-     ILogger<UserDashboardController> logger,
-     IConfiguration configuration,
-     IHubContext<ChatHub> hubContext,
-     INotificationService notificationService) // Add this
+            IVideoCallHistoryService videoCallHistoryService,
+            IVideoCallParticipantService videoCallParticipantService,
+            ILogger<UserDashboardController> logger,
+            IConfiguration configuration,
+            IHubContext<ChatHub> chatHub) // Removed duplicate parameter
         {
             _videoCallHistoryService = videoCallHistoryService;
             _videoCallParticipantService = videoCallParticipantService;
             _logger = logger;
             connectionString = configuration.GetConnectionString("DefaultConnection");
-            _hubContext = hubContext;
-            _notificationService = notificationService; // Add this
+            _chatHub = chatHub; // Now using _chatHub consistently
         }
-
         public IActionResult Index(string selectedUserId = null, int? selectedGroupId = null)
         {
             var userType = HttpContext.Session.GetString("UserType");
@@ -69,15 +65,9 @@ namespace MessangerWeb.Controllers
             var users = GetAllUsersWithLastMessage(userId, userEmail);
             var groups = GetUserGroups(userEmail);
 
-            // Create ChatService instance
-            var chatService = new ChatService();
+            // Get combined chats
+            var combinedChats = GetUnifiedChatsInternal(userId, userEmail, selectedUserId, selectedGroupId?.ToString());
 
-            // Build combined chats
-            var combinedChats = chatService.BuildCombinedChats(
-                users,
-                groups,
-                selectedUserId,
-                selectedGroupId?.ToString());
 
             var model = new UserDashboardViewModel
             {
@@ -139,6 +129,67 @@ namespace MessangerWeb.Controllers
             return View(model);
         }
 
+        // Real-time broadcasting methods
+        private async Task BroadcastMessageSent(string senderId, string receiverId, string message, DateTime sentAt)
+        {
+            await _chatHub.Clients.Group($"user_{receiverId}").SendAsync("ReceiveMessage", new
+            {
+                senderId = senderId,
+                message = message,
+                sentAt = sentAt,
+                isNewMessage = true,
+                updateChatOrder = true
+            });
+        }
+
+        private async Task BroadcastGroupMessageSent(int groupId, string senderId, string message, string senderName, DateTime sentAt)
+        {
+            await _chatHub.Clients.Group($"group_{groupId}").SendAsync("ReceiveGroupMessage", new
+            {
+                senderId = senderId,
+                message = message,
+                sentAt = sentAt,
+                senderName = senderName,
+                groupId = groupId,
+                isNewMessage = true,
+                updateChatOrder = true
+            });
+        }
+
+        private async Task BroadcastProfileUpdate(string userId, string firstName, string lastName, string photoBase64)
+        {
+            await _chatHub.Clients.All.SendAsync("ProfileUpdated", new
+            {
+                userId = userId,
+                firstName = firstName,
+                lastName = lastName,
+                fullName = $"{firstName} {lastName}",
+                photoBase64 = photoBase64,
+                updatedAt = DateTime.UtcNow
+            });
+        }
+
+        private async Task BroadcastGroupUpdate(int groupId, string groupName, string groupImageBase64)
+        {
+            await _chatHub.Clients.Group($"group_{groupId}").SendAsync("GroupUpdated", new
+            {
+                groupId = groupId,
+                groupName = groupName,
+                groupImageBase64 = groupImageBase64,
+                updatedAt = DateTime.UtcNow
+            });
+        }
+
+        private async Task UpdateChatListForUser(string userId)
+        {
+            await _chatHub.Clients.Group($"chatlist_{userId}").SendAsync("UpdateChatList");
+        }
+
+        private async Task UpdateUnreadCounts(string userId)
+        {
+            await _chatHub.Clients.Group($"chatlist_{userId}").SendAsync("UpdateUnreadCounts");
+        }
+
         private async Task UpdateChatOrderAfterMessage(string currentUserId, string currentUserEmail,
     string receiverId = null, int? groupId = null)
         {
@@ -152,7 +203,7 @@ namespace MessangerWeb.Controllers
                 var updatedChats = chatService.BuildCombinedChats(users, groups);
 
                 // Broadcast update via SignalR
-                await _hubContext.Clients.Group($"chatlist_{currentUserId}").SendAsync("UpdateChatList", updatedChats);
+                await _chatHub.Clients.Group($"chatlist_{currentUserId}").SendAsync("UpdateChatList", updatedChats);
 
                 // If it's a group message, update all group members
                 if (groupId.HasValue)
@@ -162,14 +213,14 @@ namespace MessangerWeb.Controllers
                     {
                         if (memberId != currentUserId)
                         {
-                            await _hubContext.Clients.Group($"chatlist_{memberId}").SendAsync("UpdateChatList");
+                            await _chatHub.Clients.Group($"chatlist_{memberId}").SendAsync("UpdateChatList");
                         }
                     }
                 }
                 // If it's a user message, update the receiver too
                 else if (!string.IsNullOrEmpty(receiverId))
                 {
-                    await _hubContext.Clients.Group($"chatlist_{receiverId}").SendAsync("UpdateChatList");
+                    await _chatHub.Clients.Group($"chatlist_{receiverId}").SendAsync("UpdateChatList");
                 }
             }
             catch (Exception ex)
@@ -182,74 +233,76 @@ namespace MessangerWeb.Controllers
                 List<GroupInfo> groups,
                 string selectedUserId = null,
                 string selectedGroupId = null)
+        {
+            var combinedChats = new List<CombinedChatEntry>();
+
+            // Add user chats
+            foreach (var user in users)
             {
-                var combinedChats = new List<CombinedChatEntry>();
-
-                // Add user chats
-                foreach (var user in users)
+                combinedChats.Add(new CombinedChatEntry
                 {
-                    combinedChats.Add(new CombinedChatEntry
-                    {
-                        ChatType = "user",
-                        ChatId = user.UserId,
-                        ChatName = user.FullName,
-                        PhotoBase64 = user.PhotoBase64,
-                        LastTime = user.LastMessageTime,
-                        UnreadCount = user.UnreadCount,
-                        IsSelected = selectedUserId == user.UserId
-                    });
-                }
-
-                // Add group chats
-                foreach (var group in groups)
-                {
-                    combinedChats.Add(new CombinedChatEntry
-                    {
-                        ChatType = "group",
-                        ChatId = group.GroupId.ToString(),
-                        ChatName = group.GroupName,
-                        PhotoBase64 = group.GroupImageBase64,
-                        LastTime = group.LastMessageTime,
-                        UnreadCount = group.UnreadCount,
-                        IsSelected = selectedGroupId == group.GroupId.ToString()
-                    });
-                }
-
-                // Sort by last activity time (newest first), then by unread count
-                return combinedChats
-                    .OrderByDescending(c => c.LastTime)
-                    .ThenByDescending(c => c.UnreadCount > 0) // Unread chats first
-                    .ThenBy(c => c.ChatName)
-                    .ToList();
+                    ChatType = "user",
+                    ChatId = user.UserId,
+                    ChatName = user.FullName,
+                    PhotoBase64 = user.PhotoBase64,
+                    LastTime = user.LastMessageTime,
+                    LastMessageTime = user.LastMessageTime,
+                    UnreadCount = user.UnreadCount,
+                    IsSelected = selectedUserId == user.UserId
+                });
             }
 
-            private void UpdateCombinedChatsAfterSelection(List<CombinedChatEntry> combinedChats,
-                string chatType, string chatId)
+            // Add group chats
+            foreach (var group in groups)
             {
-                var chat = combinedChats.FirstOrDefault(c =>
-                    c.ChatType == chatType && c.ChatId == chatId);
-
-                if (chat != null)
+                combinedChats.Add(new CombinedChatEntry
                 {
-                    // Clear unread count when selected
-                    chat.UnreadCount = 0;
-                    chat.IsSelected = true;
-
-                    // Move to top (update last time to current time)
-                    chat.LastTime = DateTime.UtcNow;
-
-                    // Re-sort
-                    combinedChats.Sort((a, b) =>
-                    {
-                        // Sort by LastTime descending
-                        var timeCompare = b.LastTime.CompareTo(a.LastTime);
-                        if (timeCompare != 0) return timeCompare;
-
-                        // Then by unread count
-                        return b.UnreadCount.CompareTo(a.UnreadCount);
-                    });
-                }
+                    ChatType = "group",
+                    ChatId = group.GroupId.ToString(),
+                    ChatName = group.GroupName,
+                    PhotoBase64 = group.GroupImageBase64,
+                    LastTime = group.LastMessageTime,
+                    LastMessageTime = group.LastMessageTime,
+                    UnreadCount = group.UnreadCount,
+                    IsSelected = selectedGroupId == group.GroupId.ToString()
+                });
             }
+
+            // Sort by last activity time (newest first), then by unread count
+            return combinedChats
+                .OrderByDescending(c => c.LastTime)
+                .ThenByDescending(c => c.UnreadCount > 0) // Unread chats first
+                .ThenBy(c => c.ChatName)
+                .ToList();
+        }
+
+        private void UpdateCombinedChatsAfterSelection(List<CombinedChatEntry> combinedChats,
+            string chatType, string chatId)
+        {
+            var chat = combinedChats.FirstOrDefault(c =>
+                c.ChatType == chatType && c.ChatId == chatId);
+
+            if (chat != null)
+            {
+                // Clear unread count when selected
+                chat.UnreadCount = 0;
+                chat.IsSelected = true;
+
+                // Move to top (update last time to current time)
+                chat.LastTime = DateTime.UtcNow;
+
+                // Re-sort
+                combinedChats.Sort((a, b) =>
+                {
+                    // Sort by LastTime descending
+                    var timeCompare = b.LastTime.CompareTo(a.LastTime);
+                    if (timeCompare != 0) return timeCompare;
+
+                    // Then by unread count
+                    return b.UnreadCount.CompareTo(a.UnreadCount);
+                });
+            }
+        }
 
         [HttpPost]
         public async Task<IActionResult> MarkChatAsRead(string chatType, string chatId)
@@ -285,14 +338,14 @@ namespace MessangerWeb.Controllers
 
                 if (result)
                 {
-                    // Get updated chat list
+                    // Get updated chat list for the current user
                     var users = GetAllUsersWithLastMessage(userId, userEmail);
                     var groups = GetUserGroups(userEmail);
                     var chatService = new ChatService();
                     var updatedChats = chatService.BuildCombinedChats(users, groups);
 
-                    // Broadcast update via SignalR
-                    await _hubContext.Clients.Group($"chatlist_{userId}").SendAsync("UpdateChatList", updatedChats);
+                    // Broadcast update to self
+                    await _chatHub.Clients.Group($"chatlist_{userId}").SendAsync("UpdateChatList", updatedChats);
 
                     return Json(new
                     {
@@ -309,6 +362,7 @@ namespace MessangerWeb.Controllers
                 return Json(new { success = false, message = ex.Message });
             }
         }
+
 
         [HttpGet]
         public IActionResult GetUpdatedChatList()
@@ -352,16 +406,6 @@ namespace MessangerWeb.Controllers
                 return Json(new { success = false, message = "Session expired. Please login again." });
             }
 
-            if (string.IsNullOrEmpty(receiverId))
-            {
-                return Json(new { success = false, message = "Invalid receiver ID." });
-            }
-
-            if (string.IsNullOrEmpty(messageText))
-            {
-                return Json(new { success = false, message = "Message cannot be empty." });
-            }
-
             try
             {
                 var receiverUser = GetUserById(receiverId);
@@ -371,14 +415,12 @@ namespace MessangerWeb.Controllers
                 }
 
                 var utcNow = DateTime.UtcNow;
-                string messageId = null;
 
                 using (var connection = new NpgsqlConnection(connectionString))
                 {
                     await connection.OpenAsync();
                     var query = @"INSERT INTO messages (sender_email, receiver_email, message, sent_at, is_read) 
-                         VALUES (@SenderEmail, @ReceiverEmail, @Message, @SentAt, 0) 
-                         RETURNING id";
+                         VALUES (@SenderEmail, @ReceiverEmail, @Message, @SentAt, 0)";
 
                     using (var command = new NpgsqlCommand(query, connection))
                     {
@@ -386,20 +428,32 @@ namespace MessangerWeb.Controllers
                         command.Parameters.AddWithValue("@ReceiverEmail", receiverUser.Email);
                         command.Parameters.AddWithValue("@Message", messageText);
                         command.Parameters.AddWithValue("@SentAt", utcNow);
-                        messageId = (await command.ExecuteScalarAsync())?.ToString();
+                        await command.ExecuteNonQueryAsync();
                     }
                 }
 
-                if (!string.IsNullOrEmpty(messageId))
+                // REAL-TIME BROADCAST
+                // 1. Send message to receiver
+                await BroadcastMessageSent(senderId, receiverId, messageText, utcNow);
+
+                // 2. Send message back to sender (for their own UI)
+                await _chatHub.Clients.Group($"user_{senderId}").SendAsync("ReceiveMessage", new
                 {
-                    // Trigger real-time notification
-                    await _notificationService.NotifyNewMessage(receiverId, false, senderId, messageId);
+                    senderId = senderId,
+                    message = messageText,
+                    sentAt = utcNow,
+                    isNewMessage = true,
+                    updateChatOrder = true
+                });
 
-                    // Also update chat order
-                    await UpdateChatOrderAfterMessage(senderId, senderEmail, receiverId);
-                }
+                // 3. Update chat lists for both users
+                await UpdateChatListForUser(senderId);
+                await UpdateChatListForUser(receiverId);
 
-                return Json(new { success = true, messageId = messageId });
+                // 4. Update unread counts
+                await UpdateUnreadCounts(receiverId);
+
+                return Json(new { success = true });
             }
             catch (Exception ex)
             {
@@ -410,242 +464,243 @@ namespace MessangerWeb.Controllers
 
 
         [HttpPost]
-            public async Task<IActionResult> AddCallParticipant([FromBody] AddCallParticipantRequest request)
+        public async Task<IActionResult> AddCallParticipant([FromBody] AddCallParticipantRequest request)
+        {
+            try
             {
-                try
-                {
-                    var userId = HttpContext.Session.GetString("UserId");
-                    if (string.IsNullOrEmpty(userId))
-                        return Json(new { success = false, message = "User not authenticated" });
+                var userId = HttpContext.Session.GetString("UserId");
+                if (string.IsNullOrEmpty(userId))
+                    return Json(new { success = false, message = "User not authenticated" });
 
-                    var success = await _videoCallParticipantService.AddParticipantAsync(
-                        request.CallId, request.UserId, request.Status);
+                var success = await _videoCallParticipantService.AddParticipantAsync(
+                    request.CallId, request.UserId, request.Status);
 
-                    return Json(new { success = success });
-                }
-                catch (Exception ex)
+                return Json(new { success = success });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding call participant");
+                return Json(new { success = false, message = "Error adding participant" });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateCallParticipantStatus([FromBody] UpdateCallParticipantStatusRequest request)
+        {
+            try
+            {
+                var userId = HttpContext.Session.GetString("UserId");
+                if (string.IsNullOrEmpty(userId))
+                    return Json(new { success = false, message = "User not authenticated" });
+
+                DateTime? joinedAt = null;
+                if (!string.IsNullOrEmpty(request.JoinedAt))
                 {
-                    _logger.LogError(ex, "Error adding call participant");
-                    return Json(new { success = false, message = "Error adding participant" });
+                    joinedAt = DateTime.Parse(request.JoinedAt);
                 }
+
+                var success = await _videoCallParticipantService.UpdateParticipantStatusAsync(
+                    request.CallId, request.UserId, request.Status, joinedAt);
+
+                return Json(new { success = success });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating call participant status");
+                return Json(new { success = false, message = "Error updating participant status" });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateCallParticipantDuration([FromBody] UpdateCallParticipantDurationRequest request)
+        {
+            try
+            {
+                var userId = HttpContext.Session.GetString("UserId");
+                if (string.IsNullOrEmpty(userId))
+                    return Json(new { success = false, message = "User not authenticated" });
+
+                var success = await _videoCallParticipantService.UpdateParticipantDurationAsync(
+                    request.CallId, request.UserId, request.Duration);
+
+                return Json(new { success = success });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating call participant duration");
+                return Json(new { success = false, message = "Error updating participant duration" });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCallDetails(string callId)
+        {
+            try
+            {
+                var userId = HttpContext.Session.GetString("UserId");
+                if (string.IsNullOrEmpty(userId))
+                    return Json(new { success = false, message = "User not authenticated" });
+
+                var callDetails = await _videoCallParticipantService.GetCallDetailsAsync(callId);
+                return Json(new { success = true, callDetails = callDetails });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting call details");
+                return Json(new { success = false, message = "Error getting call details" });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetDetailedCallHistory()
+        {
+            try
+            {
+                var userIdStr = HttpContext.Session.GetString("UserId");
+                if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
+                    return Json(new { success = false, message = "User not authenticated" });
+
+                var callHistory = await _videoCallParticipantService.GetUserCallHistoryAsync(userId);
+                return Json(new { success = true, callHistory = callHistory });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting detailed call history");
+                return Json(new { success = false, message = "Error getting call history" });
+            }
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> SendFile(IFormFile file, string receiverId)
+        {
+            var senderId = HttpContext.Session.GetString("UserId");
+            var senderEmail = HttpContext.Session.GetString("Email");
+
+            if (string.IsNullOrEmpty(senderId))
+            {
+                return Json(new { success = false, message = "Session expired. Please login again." });
             }
 
-            [HttpPost]
-            public async Task<IActionResult> UpdateCallParticipantStatus([FromBody] UpdateCallParticipantStatusRequest request)
+            if (string.IsNullOrEmpty(receiverId))
             {
-                try
-                {
-                    var userId = HttpContext.Session.GetString("UserId");
-                    if (string.IsNullOrEmpty(userId))
-                        return Json(new { success = false, message = "User not authenticated" });
-
-                    DateTime? joinedAt = null;
-                    if (!string.IsNullOrEmpty(request.JoinedAt))
-                    {
-                        joinedAt = DateTime.Parse(request.JoinedAt);
-                    }
-
-                    var success = await _videoCallParticipantService.UpdateParticipantStatusAsync(
-                        request.CallId, request.UserId, request.Status, joinedAt);
-
-                    return Json(new { success = success });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error updating call participant status");
-                    return Json(new { success = false, message = "Error updating participant status" });
-                }
+                return Json(new { success = false, message = "Invalid receiver ID." });
             }
 
-            [HttpPost]
-            public async Task<IActionResult> UpdateCallParticipantDuration([FromBody] UpdateCallParticipantDurationRequest request)
+            if (file == null || file.Length == 0)
             {
-                try
-                {
-                    var userId = HttpContext.Session.GetString("UserId");
-                    if (string.IsNullOrEmpty(userId))
-                        return Json(new { success = false, message = "User not authenticated" });
-
-                    var success = await _videoCallParticipantService.UpdateParticipantDurationAsync(
-                        request.CallId, request.UserId, request.Duration);
-
-                    return Json(new { success = success });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error updating call participant duration");
-                    return Json(new { success = false, message = "Error updating participant duration" });
-                }
+                return Json(new { success = false, message = "Invalid file data." });
             }
 
-            [HttpGet]
-            public async Task<IActionResult> GetCallDetails(string callId)
+            try
             {
-                try
+                var receiverUser = GetUserById(receiverId);
+                if (receiverUser == null)
                 {
-                    var userId = HttpContext.Session.GetString("UserId");
-                    if (string.IsNullOrEmpty(userId))
-                        return Json(new { success = false, message = "User not authenticated" });
-
-                    var callDetails = await _videoCallParticipantService.GetCallDetailsAsync(callId);
-                    return Json(new { success = true, callDetails = callDetails });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error getting call details");
-                    return Json(new { success = false, message = "Error getting call details" });
-                }
-            }
-
-            [HttpGet]
-            public async Task<IActionResult> GetDetailedCallHistory()
-            {
-                try
-                {
-                    var userIdStr = HttpContext.Session.GetString("UserId");
-                    if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
-                        return Json(new { success = false, message = "User not authenticated" });
-
-                    var callHistory = await _videoCallParticipantService.GetUserCallHistoryAsync(userId);
-                    return Json(new { success = true, callHistory = callHistory });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error getting detailed call history");
-                    return Json(new { success = false, message = "Error getting call history" });
-                }
-            }
-
-
-            [HttpPost]
-            public async Task<IActionResult> SendFile(IFormFile file, string receiverId)
-            {
-                var senderId = HttpContext.Session.GetString("UserId");
-                var senderEmail = HttpContext.Session.GetString("Email");
-
-                if (string.IsNullOrEmpty(senderId))
-                {
-                    return Json(new { success = false, message = "Session expired. Please login again." });
+                    return Json(new { success = false, message = "Receiver not found" });
                 }
 
-                if (string.IsNullOrEmpty(receiverId))
+                if (!Directory.Exists(fileUploadPath))
                 {
-                    return Json(new { success = false, message = "Invalid receiver ID." });
+                    Directory.CreateDirectory(fileUploadPath);
                 }
 
-                if (file == null || file.Length == 0)
+                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+                var filePath = Path.Combine(fileUploadPath, fileName);
+                var relativePath = $"/uploads/chatfiles/{fileName}";
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
                 {
-                    return Json(new { success = false, message = "Invalid file data." });
+                    file.CopyTo(stream);
                 }
 
-                try
+                var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
+                var isImage = imageExtensions.Contains(Path.GetExtension(file.FileName).ToLower());
+
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    var receiverUser = GetUserById(receiverId);
-                    if (receiverUser == null)
+                    connection.Open();
+                    string query;
+
+                    if (isImage)
                     {
-                        return Json(new { success = false, message = "Receiver not found" });
-                    }
-
-                    if (!Directory.Exists(fileUploadPath))
-                    {
-                        Directory.CreateDirectory(fileUploadPath);
-                    }
-
-                    var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-                    var filePath = Path.Combine(fileUploadPath, fileName);
-                    var relativePath = $"/uploads/chatfiles/{fileName}";
-
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        file.CopyTo(stream);
-                    }
-
-                    var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
-                    var isImage = imageExtensions.Contains(Path.GetExtension(file.FileName).ToLower());
-
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        connection.Open();
-                        string query;
-
-                        if (isImage)
-                        {
-                            query = @"INSERT INTO messages (sender_email, receiver_email, message, sent_at, is_read, image_path, file_name, file_original_name) 
+                        query = @"INSERT INTO messages (sender_email, receiver_email, message, sent_at, is_read, image_path, file_name, file_original_name) 
                                  VALUES (@SenderEmail, @ReceiverEmail, '', NOW(), 0, @ImagePath, @FileName, @FileOriginalName)";
-                        }
-                        else
-                        {
-                            query = @"INSERT INTO messages (sender_email, receiver_email, message, sent_at, is_read, file_path, file_name, file_original_name) 
+                    }
+                    else
+                    {
+                        query = @"INSERT INTO messages (sender_email, receiver_email, message, sent_at, is_read, file_path, file_name, file_original_name) 
                                  VALUES (@SenderEmail, @ReceiverEmail, '', NOW(), 0, @FilePath, @FileName, @FileOriginalName)";
-                        }
-
-                        using (var command = new NpgsqlCommand(query, connection))
-                        {
-                            command.Parameters.AddWithValue("@SenderEmail", senderEmail);
-                            command.Parameters.AddWithValue("@ReceiverEmail", receiverUser.Email);
-                            command.Parameters.AddWithValue("@FilePath", (object)(isImage ? null : relativePath) ?? DBNull.Value);
-                            command.Parameters.AddWithValue("@ImagePath", (object)(isImage ? relativePath : null) ?? DBNull.Value);
-                            command.Parameters.AddWithValue("@FileName", fileName);
-                            command.Parameters.AddWithValue("@FileOriginalName", file.FileName);
-                            command.ExecuteNonQuery();
-                        }
                     }
 
-                    // Broadcast via SignalR
-                    var messageData = new
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
-                        senderId = senderId,
-                        message = "",
-                        sentAt = DateTime.UtcNow,
-                        filePath = isImage ? null : relativePath,
-                        imagePath = isImage ? relativePath : null,
-                        fileName = file.FileName,
-                        fileOriginalName = file.FileName,
-                        receiverId = receiverId
-                    };
-
-                    await _hubContext.Clients.Group($"user_{receiverId}").SendAsync("ReceiveMessage", messageData);
-                    await _hubContext.Clients.Group($"user_{senderId}").SendAsync("ReceiveMessage", messageData);
-
-                    return Json(new { success = true, fileName = file.FileName, isImage = isImage });
+                        command.Parameters.AddWithValue("@SenderEmail", senderEmail);
+                        command.Parameters.AddWithValue("@ReceiverEmail", receiverUser.Email);
+                        command.Parameters.AddWithValue("@FilePath", (object)(isImage ? null : relativePath) ?? DBNull.Value);
+                        command.Parameters.AddWithValue("@ImagePath", (object)(isImage ? relativePath : null) ?? DBNull.Value);
+                        command.Parameters.AddWithValue("@FileName", fileName);
+                        command.Parameters.AddWithValue("@FileOriginalName", file.FileName);
+                        command.ExecuteNonQuery();
+                    }
                 }
-                catch (Exception ex)
+
+                // Broadcast via SignalR
+                var messageData = new
                 {
-                    return Json(new { success = false, message = ex.Message });
-                }
+                    senderId = senderId,
+                    message = "",
+                    sentAt = DateTime.UtcNow,
+                    filePath = isImage ? null : relativePath,
+                    imagePath = isImage ? relativePath : null,
+                    fileName = file.FileName,
+                    fileOriginalName = file.FileName,
+                    receiverId = receiverId
+                };
+
+                await _chatHub.Clients.Group($"user_{receiverId}").SendAsync("ReceiveMessage", messageData);
+                await _chatHub.Clients.Group($"user_{senderId}").SendAsync("ReceiveMessage", messageData);
+
+                return Json(new { success = true, fileName = file.FileName, isImage = isImage });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpGet]
+        public IActionResult GetMessages(string otherUserId)
+        {
+            var currentUserId = HttpContext.Session.GetString("UserId");
+            var currentUserEmail = HttpContext.Session.GetString("Email");
+
+            if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(otherUserId))
+            {
+                return Json(new { success = false, message = "Invalid user data" });
             }
 
-            [HttpGet]
-            public IActionResult GetMessages(string otherUserId)
+            var otherUser = GetUserById(otherUserId);
+            if (otherUser == null)
             {
-                var currentUserId = HttpContext.Session.GetString("UserId");
-                var currentUserEmail = HttpContext.Session.GetString("Email");
-
-                if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(otherUserId))
-                {
-                    return Json(new { success = false, message = "Invalid user data" });
-                }
-
-                var otherUser = GetUserById(otherUserId);
-                if (otherUser == null)
-                {
-                    return Json(new { success = false, message = "User not found" });
-                }
-
-                var messages = GetMessages(currentUserEmail, otherUser.Email);
-                return Json(new { success = true, messages = messages });
+                return Json(new { success = false, message = "User not found" });
             }
 
-            private List<ChatMessage> GetMessages(string currentUserEmail, string otherUserEmail)
-            {
-                var messages = new List<ChatMessage>();
+            var messages = GetMessages(currentUserEmail, otherUser.Email);
+            return Json(new { success = true, messages = messages });
+        }
 
-                try
+        private List<ChatMessage> GetMessages(string currentUserEmail, string otherUserEmail)
+        {
+            var messages = new List<ChatMessage>();
+
+            try
+            {
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        connection.Open();
-                        var query = @"SELECT m.*, 
+                    connection.Open();
+                    var query = @"SELECT m.*, 
                          s1.firstname as sender_firstname, s1.lastname as sender_lastname,
                          s2.firstname as receiver_firstname, s2.lastname as receiver_lastname
                          FROM messages m
@@ -655,217 +710,217 @@ namespace MessangerWeb.Controllers
                          OR (m.sender_email = @OtherUserEmail AND m.receiver_email = @CurrentUserEmail)
                          ORDER BY m.sent_at ASC";
 
-                        using (var command = new NpgsqlCommand(query, connection))
-                        {
-                            command.Parameters.AddWithValue("@CurrentUserEmail", currentUserEmail);
-                            command.Parameters.AddWithValue("@OtherUserEmail", otherUserEmail);
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@CurrentUserEmail", currentUserEmail);
+                        command.Parameters.AddWithValue("@OtherUserEmail", otherUserEmail);
 
-                            using (var reader = command.ExecuteReader())
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
                             {
-                                while (reader.Read())
+                                var message = new ChatMessage
                                 {
-                                    var message = new ChatMessage
-                                    {
-                                        MessageId = Convert.ToInt32(reader["id"]),
-                                        SenderEmail = reader["sender_email"].ToString(),
-                                        ReceiverEmail = reader["receiver_email"].ToString(),
-                                        SenderName = $"{reader["sender_firstname"]} {reader["sender_lastname"]}",
-                                        ReceiverName = $"{reader["receiver_firstname"]} {reader["receiver_lastname"]}",
-                                        MessageText = reader["message"]?.ToString() ?? "",
-                                        SentAt = DateTime.SpecifyKind(Convert.ToDateTime(reader["sent_at"]), DateTimeKind.Utc),
-                                        IsRead = Convert.ToBoolean(reader["is_read"]),
-                                        IsCurrentUserSender = reader["sender_email"].ToString() == currentUserEmail,
-                                        FilePath = reader["file_path"]?.ToString(),
-                                        ImagePath = reader["image_path"]?.ToString(),
-                                        FileName = reader["file_name"]?.ToString(),
-                                        FileOriginalName = reader["file_original_name"]?.ToString(),
-                                        // Add call message fields
-                                        IsCallMessage = reader["is_call_message"] != DBNull.Value && Convert.ToBoolean(reader["is_call_message"]),
-                                        CallDuration = reader["call_duration"]?.ToString(),
-                                        CallStatus = reader["call_status"]?.ToString()
-                                    };
-                                    messages.Add(message);
-                                }
+                                    MessageId = Convert.ToInt32(reader["id"]),
+                                    SenderEmail = reader["sender_email"].ToString(),
+                                    ReceiverEmail = reader["receiver_email"].ToString(),
+                                    SenderName = $"{reader["sender_firstname"]} {reader["sender_lastname"]}",
+                                    ReceiverName = $"{reader["receiver_firstname"]} {reader["receiver_lastname"]}",
+                                    MessageText = reader["message"]?.ToString() ?? "",
+                                    SentAt = DateTime.SpecifyKind(Convert.ToDateTime(reader["sent_at"]), DateTimeKind.Utc),
+                                    IsRead = Convert.ToBoolean(reader["is_read"]),
+                                    IsCurrentUserSender = reader["sender_email"].ToString() == currentUserEmail,
+                                    FilePath = reader["file_path"]?.ToString(),
+                                    ImagePath = reader["image_path"]?.ToString(),
+                                    FileName = reader["file_name"]?.ToString(),
+                                    FileOriginalName = reader["file_original_name"]?.ToString(),
+                                    // Add call message fields
+                                    IsCallMessage = reader["is_call_message"] != DBNull.Value && Convert.ToBoolean(reader["is_call_message"]),
+                                    CallDuration = reader["call_duration"]?.ToString(),
+                                    CallStatus = reader["call_status"]?.ToString()
+                                };
+                                messages.Add(message);
                             }
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error fetching messages: {ex.Message}");
-                }
-
-                return messages;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching messages: {ex.Message}");
             }
 
-            private UserInfo GetUserById(string userId)
+            return messages;
+        }
+
+        private UserInfo GetUserById(string userId)
+        {
+            try
             {
-                try
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    using (var connection = new NpgsqlConnection(connectionString))
+                    connection.Open();
+                    var query = "SELECT \"id\", \"firstname\", \"lastname\", \"email\", \"photo\" FROM students WHERE \"id\" = @UserId";
+
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
-                        connection.Open();
-                        var query = "SELECT \"id\", \"firstname\", \"lastname\", \"email\", \"photo\" FROM students WHERE \"id\" = @UserId";
-
-                        using (var command = new NpgsqlCommand(query, connection))
+                        if (int.TryParse(userId, out int id))
                         {
-                            if (int.TryParse(userId, out int id))
-                            {
-                                command.Parameters.AddWithValue("@UserId", id);
-                            }
-                            else
-                            {
-                                return null;
-                            }
+                            command.Parameters.AddWithValue("@UserId", id);
+                        }
+                        else
+                        {
+                            return null;
+                        }
 
-                            using (var reader = command.ExecuteReader())
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
                             {
-                                if (reader.Read())
+                                byte[] photoData = null;
+                                if (reader["photo"] != DBNull.Value)
                                 {
-                                    byte[] photoData = null;
-                                    if (reader["photo"] != DBNull.Value)
-                                    {
-                                        photoData = (byte[])reader["photo"];
-                                    }
-
-                                    return new UserInfo
-                                    {
-                                        UserId = reader["id"].ToString(),
-                                        FirstName = reader["firstname"].ToString(),
-                                        LastName = reader["lastname"].ToString(),
-                                        FullName = $"{reader["firstname"]} {reader["lastname"]}",
-                                        Email = reader["email"].ToString(),
-                                        PhotoData = photoData
-                                    };
+                                    photoData = (byte[])reader["photo"];
                                 }
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error fetching user: {ex.Message}");
-                }
 
-                return null;
-            }
-
-            private List<UserInfo> GetAllUsers(string currentUserId)
-            {
-                var users = new List<UserInfo>();
-
-                try
-                {
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        connection.Open();
-                        string query = "SELECT \"id\", \"firstname\", \"lastname\", \"email\", \"status\", \"photo\" FROM students WHERE \"status\" = 'Active' AND \"id\" != @CurrentUserId";
-
-                        using (var command = new NpgsqlCommand(query, connection))
-                        {
-                            if (int.TryParse(currentUserId, out int id))
-                            {
-                                command.Parameters.AddWithValue("@CurrentUserId", id);
-                            }
-                            else
-                            {
-                                return users;
-                            }
-
-                            using (var reader = command.ExecuteReader())
-                            {
-                                while (reader.Read())
+                                return new UserInfo
                                 {
-                                    string userId = reader["id"].ToString();
-                                    string firstName = reader["firstname"].ToString();
-                                    string lastName = reader["lastname"].ToString();
-                                    string email = reader["email"].ToString();
-
-                                    byte[] photoData = null;
-                                    if (reader["photo"] != DBNull.Value)
-                                    {
-                                        photoData = (byte[])reader["photo"];
-                                    }
-
-                                    users.Add(new UserInfo
-                                    {
-                                        UserId = userId,
-                                        FirstName = firstName,
-                                        LastName = lastName,
-                                        FullName = $"{firstName} {lastName}",
-                                        Email = email,
-                                        PhotoData = photoData
-                                    });
-                                }
+                                    UserId = reader["id"].ToString(),
+                                    FirstName = reader["firstname"].ToString(),
+                                    LastName = reader["lastname"].ToString(),
+                                    FullName = $"{reader["firstname"]} {reader["lastname"]}",
+                                    Email = reader["email"].ToString(),
+                                    PhotoData = photoData
+                                };
                             }
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error fetching users: {ex.Message}");
-                }
-
-                return users;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching user: {ex.Message}");
             }
 
-            private bool IsUserActive(string userId)
+            return null;
+        }
+
+        private List<UserInfo> GetAllUsers(string currentUserId)
+        {
+            var users = new List<UserInfo>();
+
+            try
             {
-                try
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    using (var connection = new NpgsqlConnection(connectionString))
+                    connection.Open();
+                    string query = "SELECT \"id\", \"firstname\", \"lastname\", \"email\", \"status\", \"photo\" FROM students WHERE \"status\" = 'Active' AND \"id\" != @CurrentUserId";
+
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
-                        connection.Open();
-                        var query = "SELECT COUNT(*) FROM students WHERE \"id\" = @UserId AND \"status\" = 'Active'";
-                        using (var command = new NpgsqlCommand(query, connection))
+                        if (int.TryParse(currentUserId, out int id))
                         {
-                            if (int.TryParse(userId, out int id))
+                            command.Parameters.AddWithValue("@CurrentUserId", id);
+                        }
+                        else
+                        {
+                            return users;
+                        }
+
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
                             {
-                                command.Parameters.AddWithValue("@UserId", id);
-                                long result = (long)command.ExecuteScalar();
-                                return result > 0;
+                                string userId = reader["id"].ToString();
+                                string firstName = reader["firstname"].ToString();
+                                string lastName = reader["lastname"].ToString();
+                                string email = reader["email"].ToString();
+
+                                byte[] photoData = null;
+                                if (reader["photo"] != DBNull.Value)
+                                {
+                                    photoData = (byte[])reader["photo"];
+                                }
+
+                                users.Add(new UserInfo
+                                {
+                                    UserId = userId,
+                                    FirstName = firstName,
+                                    LastName = lastName,
+                                    FullName = $"{firstName} {lastName}",
+                                    Email = email,
+                                    PhotoData = photoData
+                                });
                             }
-                            return false;
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error checking user status: {ex.Message}");
-                    return false;
-                }
             }
-
-            [HttpGet]
-            public IActionResult GetCurrentUserProfile()
+            catch (Exception ex)
             {
-                var userId = HttpContext.Session.GetString("UserId");
-                if (string.IsNullOrEmpty(userId))
-                {
-                    return Json(new { success = false, message = "User not logged in" });
-                }
+                Console.WriteLine($"Error fetching users: {ex.Message}");
+            }
 
-                try
+            return users;
+        }
+
+        private bool IsUserActive(string userId)
+        {
+            try
+            {
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    var user = GetUserById(userId);
-                    if (user != null)
+                    connection.Open();
+                    var query = "SELECT COUNT(*) FROM students WHERE \"id\" = @UserId AND \"status\" = 'Active'";
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
-                        return Json(new
+                        if (int.TryParse(userId, out int id))
                         {
-                            success = true,
-                            userId = user.UserId,
-                            firstName = user.FirstName,
-                            lastName = user.LastName,
-                            photoBase64 = user.PhotoBase64
-                        });
+                            command.Parameters.AddWithValue("@UserId", id);
+                            long result = (long)command.ExecuteScalar();
+                            return result > 0;
+                        }
+                        return false;
                     }
-                    return Json(new { success = false, message = "User not found" });
-                }
-                catch (Exception ex)
-                {
-                    return Json(new { success = false, message = ex.Message });
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking user status: {ex.Message}");
+                return false;
+            }
+        }
+
+        [HttpGet]
+        public IActionResult GetCurrentUserProfile()
+        {
+            var userId = HttpContext.Session.GetString("UserId");
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Json(new { success = false, message = "User not logged in" });
+            }
+
+            try
+            {
+                var user = GetUserById(userId);
+                if (user != null)
+                {
+                    return Json(new
+                    {
+                        success = true,
+                        userId = user.UserId,
+                        firstName = user.FirstName,
+                        lastName = user.LastName,
+                        photoBase64 = user.PhotoBase64
+                    });
+                }
+                return Json(new { success = false, message = "User not found" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
 
         [HttpPost]
         public async Task<IActionResult> UpdateProfile(ProfileUpdateModel model)
@@ -884,6 +939,7 @@ namespace MessangerWeb.Controllers
 
                     string query;
                     NpgsqlCommand command;
+                    string photoBase64 = null;
 
                     if (model.ProfileImage != null && model.ProfileImage.Length > 0)
                     {
@@ -891,6 +947,7 @@ namespace MessangerWeb.Controllers
                         {
                             model.ProfileImage.CopyTo(memoryStream);
                             var photoData = memoryStream.ToArray();
+                            photoBase64 = Convert.ToBase64String(photoData);
 
                             query = "UPDATE students SET \"firstname\" = @FirstName, \"lastname\" = @LastName, \"photo\" = @Photo WHERE \"id\" = @UserId";
                             command = new NpgsqlCommand(query, connection);
@@ -916,10 +973,10 @@ namespace MessangerWeb.Controllers
                         HttpContext.Session.SetString("FirstName", model.FirstName);
                         HttpContext.Session.SetString("LastName", model.LastName);
 
-                        // Trigger real-time notification
-                        await _notificationService.NotifyUserProfileUpdated(userId);
+                        // REAL-TIME BROADCAST
+                        await BroadcastProfileUpdate(userId, model.FirstName, model.LastName, photoBase64);
 
-                        return Json(new { success = true, message = "Profile updated successfully" });
+                        return Json(new { success = true, message = "Profile updated successfully", photoBase64 = photoBase64 });
                     }
                     else
                     {
@@ -934,136 +991,136 @@ namespace MessangerWeb.Controllers
         }
 
         [HttpGet]
-            public IActionResult GetGroups()
+        public IActionResult GetGroups()
+        {
+            var userEmail = HttpContext.Session.GetString("Email");
+            if (string.IsNullOrEmpty(userEmail))
             {
-                var userEmail = HttpContext.Session.GetString("Email");
-                if (string.IsNullOrEmpty(userEmail))
-                {
-                    return Json(new { success = false, message = "User not logged in" });
-                }
-
-                try
-                {
-                    var groups = GetUserGroups(userEmail);
-                    return Json(new { success = true, groups = groups });
-                }
-                catch (Exception ex)
-                {
-                    return Json(new { success = false, message = ex.Message });
-                }
+                return Json(new { success = false, message = "User not logged in" });
             }
 
-            [HttpPost]
-            public IActionResult CreateGroup(CreateGroupModel model)
+            try
             {
-                var userEmail = HttpContext.Session.GetString("Email");
-                var userName = HttpContext.Session.GetString("FirstName") + " " + HttpContext.Session.GetString("LastName");
+                var groups = GetUserGroups(userEmail);
+                return Json(new { success = true, groups = groups });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
 
-                if (string.IsNullOrEmpty(userEmail))
+        [HttpPost]
+        public IActionResult CreateGroup(CreateGroupModel model)
+        {
+            var userEmail = HttpContext.Session.GetString("Email");
+            var userName = HttpContext.Session.GetString("FirstName") + " " + HttpContext.Session.GetString("LastName");
+
+            if (string.IsNullOrEmpty(userEmail))
+            {
+                return Json(new { success = false, message = "User not logged in" });
+            }
+
+            if (string.IsNullOrEmpty(model.GroupName) || model.SelectedMembers == null || !model.SelectedMembers.Any())
+            {
+                return Json(new { success = false, message = "Group name and at least one member are required" });
+            }
+
+            try
+            {
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    return Json(new { success = false, message = "User not logged in" });
-                }
+                    connection.Open();
 
-                if (string.IsNullOrEmpty(model.GroupName) || model.SelectedMembers == null || !model.SelectedMembers.Any())
-                {
-                    return Json(new { success = false, message = "Group name and at least one member are required" });
-                }
-
-                try
-                {
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        connection.Open();
-
-                        var groupQuery = @"INSERT INTO ""groups"" (""group_name"", ""created_by"", ""created_at"", ""group_image"", ""updated_at"", ""last_activity"") 
+                    var groupQuery = @"INSERT INTO ""groups"" (""group_name"", ""created_by"", ""created_at"", ""group_image"", ""updated_at"", ""last_activity"") 
                              VALUES (@GroupName, @CreatedBy, NOW(), @GroupImage, NOW(), NOW()) RETURNING ""group_id"";";
 
-                        int groupId;
-                        using (var command = new NpgsqlCommand(groupQuery, connection))
+                    int groupId;
+                    using (var command = new NpgsqlCommand(groupQuery, connection))
+                    {
+                        command.Parameters.AddWithValue("@GroupName", model.GroupName);
+                        command.Parameters.AddWithValue("@CreatedBy", userEmail);
+
+                        if (model.GroupImage != null && model.GroupImage.Length > 0)
                         {
-                            command.Parameters.AddWithValue("@GroupName", model.GroupName);
-                            command.Parameters.AddWithValue("@CreatedBy", userEmail);
-
-                            if (model.GroupImage != null && model.GroupImage.Length > 0)
+                            using (var memoryStream = new MemoryStream())
                             {
-                                using (var memoryStream = new MemoryStream())
-                                {
-                                    model.GroupImage.CopyTo(memoryStream);
-                                    command.Parameters.AddWithValue("@GroupImage", memoryStream.ToArray());
-                                }
+                                model.GroupImage.CopyTo(memoryStream);
+                                command.Parameters.AddWithValue("@GroupImage", memoryStream.ToArray());
                             }
-                            else
-                            {
-                                command.Parameters.AddWithValue("@GroupImage", DBNull.Value);
-                            }
-
-                            groupId = Convert.ToInt32(command.ExecuteScalar());
+                        }
+                        else
+                        {
+                            command.Parameters.AddWithValue("@GroupImage", DBNull.Value);
                         }
 
-                        var memberQuery = @"INSERT INTO ""group_members"" (""group_id"", ""student_email"", ""joined_at"") 
+                        groupId = Convert.ToInt32(command.ExecuteScalar());
+                    }
+
+                    var memberQuery = @"INSERT INTO ""group_members"" (""group_id"", ""student_email"", ""joined_at"") 
                               VALUES (@GroupId, @StudentEmail, NOW())";
 
-                        // Add current user as member
+                    // Add current user as member
+                    using (var command = new NpgsqlCommand(memberQuery, connection))
+                    {
+                        command.Parameters.AddWithValue("@GroupId", groupId);
+                        command.Parameters.AddWithValue("@StudentEmail", userEmail);
+                        command.ExecuteNonQuery();
+                    }
+
+                    // Add selected members
+                    foreach (var memberEmail in model.SelectedMembers)
+                    {
                         using (var command = new NpgsqlCommand(memberQuery, connection))
                         {
                             command.Parameters.AddWithValue("@GroupId", groupId);
-                            command.Parameters.AddWithValue("@StudentEmail", userEmail);
+                            command.Parameters.AddWithValue("@StudentEmail", memberEmail);
                             command.ExecuteNonQuery();
                         }
+                    }
 
-                        // Add selected members
-                        foreach (var memberEmail in model.SelectedMembers)
-                        {
-                            using (var command = new NpgsqlCommand(memberQuery, connection))
-                            {
-                                command.Parameters.AddWithValue("@GroupId", groupId);
-                                command.Parameters.AddWithValue("@StudentEmail", memberEmail);
-                                command.ExecuteNonQuery();
-                            }
-                        }
-
-                        // Add creation message - set is_read to 1 for creation messages
-                        var messageQuery = @"INSERT INTO ""group_messages"" (""group_id"", ""sender_email"", ""message"", ""sent_at"", ""is_read"") 
+                    // Add creation message - set is_read to 1 for creation messages
+                    var messageQuery = @"INSERT INTO ""group_messages"" (""group_id"", ""sender_email"", ""message"", ""sent_at"", ""is_read"") 
                                VALUES (@GroupId, @SenderEmail, @Message, NOW(), 1)";
 
-                        using (var command = new NpgsqlCommand(messageQuery, connection))
-                        {
-                            command.Parameters.AddWithValue("@GroupId", groupId);
-                            command.Parameters.AddWithValue("@SenderEmail", userEmail);
-                            command.Parameters.AddWithValue("@Message", $"{userName} created group '{model.GroupName}'");
-                            command.ExecuteNonQuery();
-                        }
-
-                        return Json(new { success = true, message = "Group created successfully", groupId = groupId });
+                    using (var command = new NpgsqlCommand(messageQuery, connection))
+                    {
+                        command.Parameters.AddWithValue("@GroupId", groupId);
+                        command.Parameters.AddWithValue("@SenderEmail", userEmail);
+                        command.Parameters.AddWithValue("@Message", $"{userName} created group '{model.GroupName}'");
+                        command.ExecuteNonQuery();
                     }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error creating group: {ex.Message}");
-                    Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                    return Json(new { success = false, message = $"Error: {ex.Message}" });
+
+                    return Json(new { success = true, message = "Group created successfully", groupId = groupId });
                 }
             }
-
-            [HttpGet]
-            public IActionResult GetGroupMessages(int groupId)
+            catch (Exception ex)
             {
-                var userEmail = HttpContext.Session.GetString("Email");
-                if (string.IsNullOrEmpty(userEmail))
-                {
-                    return Json(new { success = false, message = "User not logged in" });
-                }
-
-                try
-                {
-                    var messages = GetGroupMessagesByGroupId(groupId, userEmail);
-                    return Json(new { success = true, messages = messages });
-                }
-                catch (Exception ex)
-                {
-                    return Json(new { success = false, message = ex.Message });
-                }
+                Console.WriteLine($"Error creating group: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
             }
+        }
+
+        [HttpGet]
+        public IActionResult GetGroupMessages(int groupId)
+        {
+            var userEmail = HttpContext.Session.GetString("Email");
+            if (string.IsNullOrEmpty(userEmail))
+            {
+                return Json(new { success = false, message = "User not logged in" });
+            }
+
+            try
+            {
+                var messages = GetGroupMessagesByGroupId(groupId, userEmail);
+                return Json(new { success = true, messages = messages });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
 
         [HttpPost]
         public async Task<IActionResult> SendGroupMessage(int groupId, string messageText)
@@ -1090,16 +1147,14 @@ namespace MessangerWeb.Controllers
             try
             {
                 var utcNow = DateTime.UtcNow;
-                string messageId = null;
 
                 using (var connection = new NpgsqlConnection(connectionString))
                 {
                     await connection.OpenAsync();
 
                     var query = @"INSERT INTO group_messages (group_id, sender_email, message, sent_at, is_read) 
-                         VALUES (@GroupId, @SenderEmail, @Message, @SentAt, 0)
-                         RETURNING id;
-                         UPDATE ""groups"" SET last_activity = @SentAt WHERE group_id = @GroupId;";
+                                 VALUES (@GroupId, @SenderEmail, @Message, @SentAt, 0);
+                                 UPDATE ""groups"" SET last_activity = @SentAt WHERE group_id = @GroupId;";
 
                     using (var command = new NpgsqlCommand(query, connection))
                     {
@@ -1107,20 +1162,38 @@ namespace MessangerWeb.Controllers
                         command.Parameters.AddWithValue("@SenderEmail", senderEmail);
                         command.Parameters.AddWithValue("@Message", messageText);
                         command.Parameters.AddWithValue("@SentAt", utcNow);
-                        messageId = (await command.ExecuteScalarAsync())?.ToString();
+                        await command.ExecuteNonQueryAsync();
                     }
                 }
 
-                if (!string.IsNullOrEmpty(messageId))
+                // Broadcast via SignalR
+                var messageData = new
                 {
-                    // Trigger real-time notification for group
-                    await _notificationService.NotifyNewMessage(groupId.ToString(), true, senderId, messageId);
+                    senderId = senderId,
+                    message = messageText,
+                    sentAt = utcNow,
+                    senderName = userName,
+                    groupId = groupId,
+                    isNewMessage = true,
+                    updateChatOrder = true
+                };
 
-                    // Update chat order
-                    await UpdateChatOrderAfterMessage(senderId, senderEmail, null, groupId);
+                await _chatHub.Clients.Group($"group_{groupId}").SendAsync("ReceiveGroupMessage", messageData);
+
+                // Get all group members to update their chat lists
+                var groupMembers = await GetGroupMemberIdsAsync(groupId);
+                foreach (var memberId in groupMembers)
+                {
+                    if (memberId != senderId)
+                    {
+                        await _chatHub.Clients.Group($"chatlist_{memberId}").SendAsync("UpdateChatList");
+                    }
                 }
+                // Update chat order after sending group message
+                await UpdateChatOrderAfterMessage(senderId, senderEmail, null, groupId);
+                await _chatHub.Clients.Group($"chatlist_{senderId}").SendAsync("UpdateChatList");
 
-                return Json(new { success = true, messageId = messageId });
+                return Json(new { success = true });
             }
             catch (Exception ex)
             {
@@ -1128,303 +1201,338 @@ namespace MessangerWeb.Controllers
             }
         }
 
-        private async Task<List<string>> GetGroupMemberIdsAsync(int groupId)
-            {
-                var memberIds = new List<string>();
 
-                try
+        private async Task<List<string>> GetGroupMemberIdsAsync(int groupId)
+        {
+            var memberIds = new List<string>();
+
+            try
+            {
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        await connection.OpenAsync();
-                        var query = @"SELECT s.id 
+                    await connection.OpenAsync();
+                    var query = @"SELECT s.id 
                                  FROM group_members gm
                                  INNER JOIN students s ON gm.student_email = s.email
                                  WHERE gm.group_id = @GroupId";
 
-                        using (var command = new NpgsqlCommand(query, connection))
-                        {
-                            command.Parameters.AddWithValue("@GroupId", groupId);
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@GroupId", groupId);
 
-                            using (var reader = await command.ExecuteReaderAsync())
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
                             {
-                                while (await reader.ReadAsync())
-                                {
-                                    memberIds.Add(reader["id"].ToString());
-                                }
+                                memberIds.Add(reader["id"].ToString());
                             }
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error getting group members: {ex.Message}");
-                }
-
-                return memberIds;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting group members: {ex.Message}");
             }
 
-            private List<string> GetGroupMemberIds(int groupId)
-            {
-                var memberIds = new List<string>();
+            return memberIds;
+        }
 
-                try
+        private List<string> GetGroupMemberIds(int groupId)
+        {
+            var memberIds = new List<string>();
+
+            try
+            {
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        connection.Open();
-                        var query = @"SELECT s.id 
+                    connection.Open();
+                    var query = @"SELECT s.id 
                          FROM group_members gm
                          INNER JOIN students s ON gm.student_email = s.email
                          WHERE gm.group_id = @GroupId";
 
-                        using (var command = new NpgsqlCommand(query, connection))
-                        {
-                            command.Parameters.AddWithValue("@GroupId", groupId);
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@GroupId", groupId);
 
-                            using (var reader = command.ExecuteReader())
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
                             {
-                                while (reader.Read())
-                                {
-                                    memberIds.Add(reader["id"].ToString());
-                                }
+                                memberIds.Add(reader["id"].ToString());
                             }
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error getting group members: {ex.Message}");
-                }
-
-                return memberIds;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting group members: {ex.Message}");
             }
 
-            [HttpGet]
-            public IActionResult RefreshChatList()
+            return memberIds;
+        }
+
+        [HttpGet]
+        public IActionResult RefreshChatList()
+        {
+            var userId = HttpContext.Session.GetString("UserId");
+            var userEmail = HttpContext.Session.GetString("Email");
+
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(userEmail))
             {
-                var userId = HttpContext.Session.GetString("UserId");
-                var userEmail = HttpContext.Session.GetString("Email");
-
-                if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(userEmail))
-                {
-                    return Json(new { success = false, message = "User not authenticated" });
-                }
-
-                try
-                {
-                    var users = GetAllUsersWithLastMessage(userId, userEmail);
-                    var groups = GetUserGroups(userEmail);
-                    var combinedChats = BuildCombinedChats(users, groups);
-
-                    return Json(new
-                    {
-                        success = true,
-                        chats = combinedChats,
-                        timestamp = DateTime.UtcNow.ToString("o")
-                    });
-                }
-                catch (Exception ex)
-                {
-                    return Json(new { success = false, message = ex.Message });
-                }
+                return Json(new { success = false, message = "User not authenticated" });
             }
 
-
-            [HttpPost]
-            public async Task<IActionResult> SendGroupFile(IFormFile file, int groupId)
+            try
             {
-                var senderEmail = HttpContext.Session.GetString("Email");
-                var senderId = HttpContext.Session.GetString("UserId");
-                var userName = HttpContext.Session.GetString("FirstName") + " " + HttpContext.Session.GetString("LastName");
+                var combinedChats = GetUnifiedChatsInternal(userId, userEmail, null, null);
 
-                if (string.IsNullOrEmpty(senderEmail))
+
+                return Json(new
                 {
-                    return Json(new { success = false, message = "Session expired. Please login again." });
+                    success = true,
+                    chats = combinedChats,
+                    timestamp = DateTime.UtcNow.ToString("o")
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> SendGroupFile(IFormFile file, int groupId)
+        {
+            var senderEmail = HttpContext.Session.GetString("Email");
+            var senderId = HttpContext.Session.GetString("UserId");
+            var userName = HttpContext.Session.GetString("FirstName") + " " + HttpContext.Session.GetString("LastName");
+
+            if (string.IsNullOrEmpty(senderEmail))
+            {
+                return Json(new { success = false, message = "Session expired. Please login again." });
+            }
+
+            if (groupId <= 0)
+            {
+                return Json(new { success = false, message = "Invalid group ID." });
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                return Json(new { success = false, message = "Invalid file data." });
+            }
+
+            try
+            {
+                if (!Directory.Exists(fileUploadPath))
+                {
+                    Directory.CreateDirectory(fileUploadPath);
                 }
 
-                if (groupId <= 0)
+                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+                var filePath = Path.Combine(fileUploadPath, fileName);
+                var relativePath = $"/uploads/chatfiles/{fileName}";
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
                 {
-                    return Json(new { success = false, message = "Invalid group ID." });
+                    file.CopyTo(stream);
                 }
 
-                if (file == null || file.Length == 0)
+                var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
+                var isImage = imageExtensions.Contains(Path.GetExtension(file.FileName).ToLower());
+
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    return Json(new { success = false, message = "Invalid file data." });
-                }
+                    connection.Open();
+                    string query;
 
-                try
-                {
-                    if (!Directory.Exists(fileUploadPath))
+                    if (isImage)
                     {
-                        Directory.CreateDirectory(fileUploadPath);
-                    }
-
-                    var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-                    var filePath = Path.Combine(fileUploadPath, fileName);
-                    var relativePath = $"/uploads/chatfiles/{fileName}";
-
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        file.CopyTo(stream);
-                    }
-
-                    var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
-                    var isImage = imageExtensions.Contains(Path.GetExtension(file.FileName).ToLower());
-
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        connection.Open();
-                        string query;
-
-                        if (isImage)
-                        {
-                            query = @"INSERT INTO group_messages (group_id, sender_email, message, sent_at, is_read, image_path, file_original_name) 
+                        query = @"INSERT INTO group_messages (group_id, sender_email, message, sent_at, is_read, image_path, file_original_name) 
                          VALUES (@GroupId, @SenderEmail, '', NOW(), 0, @ImagePath, @FileOriginalName);
                          UPDATE ""groups"" SET last_activity = NOW() WHERE group_id = @GroupId;";
-                        }
-                        else
-                        {
-                            query = @"INSERT INTO group_messages (group_id, sender_email, message, sent_at, is_read, file_path, file_original_name) 
+                    }
+                    else
+                    {
+                        query = @"INSERT INTO group_messages (group_id, sender_email, message, sent_at, is_read, file_path, file_original_name) 
                          VALUES (@GroupId, @SenderEmail, '', NOW(), 0, @FilePath, @FileOriginalName);
                          UPDATE ""groups"" SET last_activity = NOW() WHERE group_id = @GroupId;";
-                        }
-
-                        using (var command = new NpgsqlCommand(query, connection))
-                        {
-                            command.Parameters.AddWithValue("@GroupId", groupId);
-                            command.Parameters.AddWithValue("@SenderEmail", senderEmail);
-                            command.Parameters.AddWithValue("@FilePath", (object)(isImage ? null : relativePath) ?? DBNull.Value);
-                            command.Parameters.AddWithValue("@ImagePath", (object)(isImage ? relativePath : null) ?? DBNull.Value);
-                            command.Parameters.AddWithValue("@FileOriginalName", file.FileName);
-                            command.ExecuteNonQuery();
-                        }
                     }
 
-                    // Broadcast via SignalR
-                    var messageData = new
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
-                        senderId = senderId,
-                        message = "",
-                        sentAt = DateTime.UtcNow,
-                        senderName = userName,
-                        filePath = isImage ? null : relativePath,
-                        imagePath = isImage ? relativePath : null,
-                        fileName = file.FileName,
-                        fileOriginalName = file.FileName,
-                        groupId = groupId
-                    };
-
-                    await _hubContext.Clients.Group($"group_{groupId}").SendAsync("ReceiveGroupMessage", messageData);
-
-                    return Json(new { success = true, fileName = file.FileName, isImage = isImage });
-                }
-                catch (Exception ex)
-                {
-                    return Json(new { success = false, message = ex.Message });
-                }
-            }
-
-            [HttpGet]
-            public IActionResult GetUnreadMessagesCount()
-            {
-                try
-                {
-                    var userEmail = HttpContext.Session.GetString("Email");
-                    Console.WriteLine($"Current user email in GetUnreadMessagesCount: {userEmail}");
-                    if (string.IsNullOrEmpty(userEmail))
-                    {
-                        return Json(new { success = false, unreadMessages = new Dictionary<string, int>() });
+                        command.Parameters.AddWithValue("@GroupId", groupId);
+                        command.Parameters.AddWithValue("@SenderEmail", senderEmail);
+                        command.Parameters.AddWithValue("@FilePath", (object)(isImage ? null : relativePath) ?? DBNull.Value);
+                        command.Parameters.AddWithValue("@ImagePath", (object)(isImage ? relativePath : null) ?? DBNull.Value);
+                        command.Parameters.AddWithValue("@FileOriginalName", file.FileName);
+                        command.ExecuteNonQuery();
                     }
-
-                    var unreadCounts = GetUnreadMessagesCount(userEmail);
-                    return Json(new { success = true, unreadMessages = unreadCounts });
                 }
-                catch (Exception ex)
+
+                // Broadcast via SignalR
+                var messageData = new
                 {
-                    Console.WriteLine($"Error getting unread messages count: {ex.Message}");
-                    return Json(new { success = false, unreadMessages = new Dictionary<string, int>() });
+                    senderId = senderId,
+                    message = "",
+                    sentAt = DateTime.UtcNow,
+                    senderName = userName,
+                    filePath = isImage ? null : relativePath,
+                    imagePath = isImage ? relativePath : null,
+                    fileName = file.FileName,
+                    fileOriginalName = file.FileName,
+                    groupId = groupId
+                };
+
+                await _chatHub.Clients.Group($"group_{groupId}").SendAsync("ReceiveGroupMessage", messageData);
+
+                return Json(new { success = true, fileName = file.FileName, isImage = isImage });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpGet]
+        public IActionResult GetUnreadCounts()
+        {
+            try
+            {
+                var userEmail = HttpContext.Session.GetString("Email");
+                if (string.IsNullOrEmpty(userEmail))
+                {
+                    return Json(new { success = false, unreadCounts = new List<object>() });
+                }
+
+                var unreadDict = GetUnreadMessagesCount(userEmail);
+
+                // Convert to list format expected by frontend
+                var unreadList = new List<object>();
+                foreach (var kvp in unreadDict)
+                {
+                    string chatType = kvp.Key.StartsWith("user_") ? "user" : "group";
+                    string chatId = kvp.Key.Replace("user_", "").Replace("group_", "");
+
+                    unreadList.Add(new
+                    {
+                        type = chatType,
+                        id = chatId,
+                        count = kvp.Value
+                    });
+                }
+
+                return Json(new { success = true, unreadCounts = unreadList });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting unread counts: {ex.Message}");
+                return Json(new { success = false, unreadCounts = new List<object>() });
+            }
+        }
+
+        private bool IsGroupId(int id)
+        {
+            try
+            {
+                using (var connection = new NpgsqlConnection(connectionString))
+                {
+                    connection.Open();
+                    using (var cmd = new NpgsqlCommand("SELECT count(*) FROM \"groups\" WHERE group_id = @id", connection))
+                    {
+                        cmd.Parameters.AddWithValue("@id", id);
+                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                    }
                 }
             }
+            catch { return false; }
+        }
 
-            private Dictionary<string, int> GetUnreadMessagesCount(string userEmail)
+        private Dictionary<string, int> GetUnreadMessagesCount(string userEmail)
+        {
+            var unreadCounts = new Dictionary<string, int>();
+
+            try
             {
-                var unreadCounts = new Dictionary<string, int>();
-
-                try
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        connection.Open();
+                    connection.Open();
 
-                        // Ensure tracking table exists
-                        EnsureGroupMessageReadStatusTableExists(connection);
+                    // Ensure tracking table exists
+                    EnsureGroupMessageReadStatusTableExists(connection);
 
-                        // Get unread individual messages
-                        var individualQuery = @"
+                    // 1. Get unread individual messages
+                    var individualQuery = @"
                 SELECT s.id as user_id, COUNT(*) as unread_count
                 FROM messages m
                 INNER JOIN students s ON m.sender_email = s.email
                 WHERE m.receiver_email = @UserEmail 
                 AND m.is_read = 0
-            AND m.sender_email != @UserEmail
+                AND m.sender_email != @UserEmail
                 GROUP BY s.id";
 
-                        using (var command = new NpgsqlCommand(individualQuery, connection))
-                        {
-                            command.Parameters.AddWithValue("@UserEmail", userEmail);
+                    using (var command = new NpgsqlCommand(individualQuery, connection))
+                    {
+                        command.Parameters.AddWithValue("@UserEmail", userEmail);
 
-                            using (var reader = command.ExecuteReader())
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
                             {
-                                while (reader.Read())
-                                {
-                                    var userId = reader["user_id"].ToString();
-                                    var count = Convert.ToInt32(reader["unread_count"]);
-                                    unreadCounts[userId] = count;
-                                }
+                                var userId = reader["user_id"].ToString();
+                                var count = Convert.ToInt32(reader["unread_count"]);
+                                // Add 'user_' prefix to distinguish from groups
+                                unreadCounts[$"user_{userId}"] = count;
                             }
                         }
+                    }
 
-                        // Get unread group messages - FIXED QUERY
-                        var groupQuery = "SELECT g.group_id, COUNT(*) as unread_count " +
-                                         "FROM group_messages gm " +
-                                         "INNER JOIN \"groups\" g ON gm.group_id = g.group_id " +
-                                         "INNER JOIN group_members gm2 ON g.group_id = gm2.group_id " +
-                                         "WHERE gm2.student_email = @UserEmail " +
-                                         "AND gm.sender_email != @UserEmail " +
-                                         "AND NOT EXISTS ( " +
-                                         "    SELECT 1 FROM group_message_read_status gmrs " +
-                                         "    WHERE gmrs.group_message_id = gm.id " +
-                                         "    AND gmrs.user_email = @UserEmail " +
-                                         "    AND gmrs.has_read = TRUE " +
-                                         ") " +
-                                         "GROUP BY g.group_id";
+                    // 2. Get unread group messages - FIXED VERSION
+                    var groupQuery = @"
+                SELECT g.group_id, COUNT(*) as unread_count 
+                FROM group_messages gm
+                INNER JOIN ""groups"" g ON gm.group_id = g.group_id 
+                INNER JOIN group_members gm2 ON g.group_id = gm2.group_id 
+                WHERE gm2.student_email = @UserEmail 
+                AND gm.sender_email != @UserEmail 
+                AND NOT EXISTS (
+                    SELECT 1 FROM group_message_read_status gmrs 
+                    WHERE gmrs.group_message_id = gm.id 
+                    AND gmrs.user_email = @UserEmail 
+                    AND gmrs.has_read = TRUE
+                ) 
+                GROUP BY g.group_id";
 
-                        using (var command = new NpgsqlCommand(groupQuery, connection))
+                    using (var command = new NpgsqlCommand(groupQuery, connection))
+                    {
+                        command.Parameters.AddWithValue("@UserEmail", userEmail);
+
+                        using (var reader = command.ExecuteReader())
                         {
-                            command.Parameters.AddWithValue("@UserEmail", userEmail);
-
-                            using (var reader = command.ExecuteReader())
+                            while (reader.Read())
                             {
-                                while (reader.Read())
-                                {
-                                    var groupId = reader["group_id"].ToString();
-                                    var count = Convert.ToInt32(reader["unread_count"]);
-                                    unreadCounts[groupId] = count;
-                                    Console.WriteLine($"Found {count} unread messages for group {groupId}");
-                                }
+                                var groupId = reader["group_id"].ToString();
+                                var count = Convert.ToInt32(reader["unread_count"]);
+                                // Add 'group_' prefix to distinguish from users
+                                unreadCounts[$"group_{groupId}"] = count;
                             }
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error in GetUnreadMessagesCount: {ex.Message}");
-                    Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                }
-
-                return unreadCounts;
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GetUnreadMessagesCount: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            }
+
+            return unreadCounts;
+        }
 
         private List<GroupInfo> GetUserGroups(string userEmail)
         {
@@ -1435,16 +1543,20 @@ namespace MessangerWeb.Controllers
                 using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
+                    EnsureGroupMessagesTableExists(connection);
+                    EnsureGroupMessageReadStatusTableExists(connection);
+
+
                     var query = @"SELECT g.*, 
                      (SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.group_id) as member_count,
                      (SELECT COUNT(*) 
                       FROM group_messages gm_msg 
                       WHERE gm_msg.group_id = g.group_id 
-                      AND gm_msg.sender_email != @UserEmail
+                      AND TRIM(LOWER(gm_msg.sender_email)) != TRIM(LOWER(@UserEmail))
                       AND NOT EXISTS (
                           SELECT 1 FROM group_message_read_status gmrs 
                           WHERE gmrs.group_message_id = gm_msg.id 
-                          AND gmrs.user_email = @UserEmail
+                          AND TRIM(LOWER(gmrs.user_email)) = TRIM(LOWER(@UserEmail))
                           AND gmrs.has_read = TRUE
                       )) as unread_count,
                      COALESCE(
@@ -1455,8 +1567,10 @@ namespace MessangerWeb.Controllers
                      ) as last_message_time
                      FROM ""groups"" g
                      INNER JOIN group_members gm ON g.group_id = gm.group_id
-                     WHERE gm.student_email = @UserEmail
+                     WHERE TRIM(LOWER(gm.student_email)) = TRIM(LOWER(@UserEmail))
                      ORDER BY last_message_time DESC NULLS LAST, g.group_name ASC";
+
+
 
                     using (var command = new NpgsqlCommand(query, connection))
                     {
@@ -1464,8 +1578,10 @@ namespace MessangerWeb.Controllers
 
                         using (var reader = command.ExecuteReader())
                         {
+                            var count = 0;
                             while (reader.Read())
                             {
+                                count++;
                                 byte[] groupImage = null;
                                 if (reader["group_image"] != DBNull.Value)
                                 {
@@ -1475,7 +1591,7 @@ namespace MessangerWeb.Controllers
                                 DateTime lastMessageTime = reader["last_message_time"] != DBNull.Value ?
                                     Convert.ToDateTime(reader["last_message_time"]) : DateTime.MinValue;
 
-                                groups.Add(new GroupInfo
+                                var g = new GroupInfo
                                 {
                                     GroupId = Convert.ToInt32(reader["group_id"]),
                                     GroupName = reader["group_name"].ToString(),
@@ -1487,32 +1603,41 @@ namespace MessangerWeb.Controllers
                                     LastMessageTime = lastMessageTime,
                                     MemberCount = Convert.ToInt32(reader["member_count"]),
                                     UnreadCount = Convert.ToInt32(reader["unread_count"])
-                                });
+                                };
+                                groups.Add(g);
+                                Console.WriteLine($"[GetUserGroups] Found group: {g.GroupName} (ID: {g.GroupId}) for user: {userEmail}");
                             }
+                            Console.WriteLine($"[GetUserGroups] Total groups found for {userEmail}: {count}");
                         }
                     }
                 }
             }
+            catch (NpgsqlException nex)
+            {
+                Console.WriteLine($"[GetUserGroups] DATABASE ERROR: {nex.Message}");
+                Console.WriteLine($"[GetUserGroups] SQL State: {nex.SqlState}");
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error fetching groups: {ex.Message}");
+                Console.WriteLine($"[GetUserGroups] GENERAL ERROR: {ex.Message}");
+                Console.WriteLine($"[GetUserGroups] Stack: {ex.StackTrace}");
             }
 
             return groups;
         }
 
         private List<GroupMessage> GetGroupMessagesByGroupId(int groupId, string currentUserEmail)
+        {
+            var messages = new List<GroupMessage>();
+
+            try
             {
-                var messages = new List<GroupMessage>();
-
-                try
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        connection.Open();
-                        EnsureGroupMessageReadStatusTableExists(connection);
+                    connection.Open();
+                    EnsureGroupMessageReadStatusTableExists(connection);
 
-                        var query = @"SELECT gm.*, 
+                    var query = @"SELECT gm.*, 
                          CONCAT(s.firstname, ' ', s.lastname) as sender_name,
                          EXISTS (
                              SELECT 1 FROM group_message_read_status gmrs 
@@ -1525,167 +1650,167 @@ namespace MessangerWeb.Controllers
                          WHERE gm.group_id = @GroupId
                          ORDER BY gm.sent_at ASC";
 
-                        using (var command = new NpgsqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@GroupId", groupId);
+                        command.Parameters.AddWithValue("@CurrentUserEmail", currentUserEmail);
+
+                        using (var reader = command.ExecuteReader())
                         {
-                            command.Parameters.AddWithValue("@GroupId", groupId);
-                            command.Parameters.AddWithValue("@CurrentUserEmail", currentUserEmail);
-
-                            using (var reader = command.ExecuteReader())
+                            while (reader.Read())
                             {
-                                while (reader.Read())
+                                bool isReadByCurrentUser = Convert.ToBoolean(reader["is_read_by_current_user"]);
+
+                                // Safely get optional file path columns
+                                string imagePath = null;
+                                string filePath = null;
+                                string fileOriginalName = null;
+
+                                try { imagePath = reader["image_path"]?.ToString(); } catch { }
+                                try { filePath = reader["file_path"]?.ToString(); } catch { }
+                                try { fileOriginalName = reader["file_original_name"]?.ToString(); } catch { }
+
+                                messages.Add(new GroupMessage
                                 {
-                                    bool isReadByCurrentUser = Convert.ToBoolean(reader["is_read_by_current_user"]);
-
-                                    // Safely get optional file path columns
-                                    string imagePath = null;
-                                    string filePath = null;
-                                    string fileOriginalName = null;
-
-                                    try { imagePath = reader["image_path"]?.ToString(); } catch { }
-                                    try { filePath = reader["file_path"]?.ToString(); } catch { }
-                                    try { fileOriginalName = reader["file_original_name"]?.ToString(); } catch { }
-
-                                    messages.Add(new GroupMessage
-                                    {
-                                        MessageId = Convert.ToInt32(reader["id"]),
-                                        GroupId = Convert.ToInt32(reader["group_id"]),
-                                        SenderEmail = reader["sender_email"].ToString(),
-                                        SenderName = reader["sender_name"].ToString(),
-                                        MessageText = reader["message"]?.ToString() ?? "",
-                                        ImagePath = imagePath,
-                                        FilePath = filePath,
-                                        FileOriginalName = fileOriginalName,
-                                        SentAt = DateTime.SpecifyKind(Convert.ToDateTime(reader["sent_at"]), DateTimeKind.Utc),
-                                        IsRead = isReadByCurrentUser,
-                                        IsCurrentUserSender = reader["sender_email"].ToString() == currentUserEmail
-                                    });
-                                }
+                                    MessageId = Convert.ToInt32(reader["id"]),
+                                    GroupId = Convert.ToInt32(reader["group_id"]),
+                                    SenderEmail = reader["sender_email"].ToString(),
+                                    SenderName = reader["sender_name"].ToString(),
+                                    MessageText = reader["message"]?.ToString() ?? "",
+                                    ImagePath = imagePath,
+                                    FilePath = filePath,
+                                    FileOriginalName = fileOriginalName,
+                                    SentAt = DateTime.SpecifyKind(Convert.ToDateTime(reader["sent_at"]), DateTimeKind.Utc),
+                                    IsRead = isReadByCurrentUser,
+                                    IsCurrentUserSender = reader["sender_email"].ToString() == currentUserEmail
+                                });
                             }
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error fetching group messages: {ex.Message}");
-                }
-
-                return messages;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching group messages: {ex.Message}");
             }
 
-            [HttpPost]
-            public IActionResult MarkMessagesAsRead(string otherUserId)
+            return messages;
+        }
+
+        [HttpPost]
+        public IActionResult MarkMessagesAsRead(string otherUserId)
+        {
+            try
             {
-                try
+                var userEmail = HttpContext.Session.GetString("Email");
+                if (string.IsNullOrEmpty(userEmail))
                 {
-                    var userEmail = HttpContext.Session.GetString("Email");
-                    if (string.IsNullOrEmpty(userEmail))
-                    {
-                        return Json(new { success = false });
-                    }
-
-                    var otherUser = GetUserById(otherUserId);
-                    if (otherUser == null)
-                    {
-                        return Json(new { success = false });
-                    }
-
-                    var result = MarkMessagesAsRead(userEmail, otherUser.Email);
-                    return Json(new { success = result });
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error marking messages as read: {ex.Message}");
                     return Json(new { success = false });
                 }
+
+                var otherUser = GetUserById(otherUserId);
+                if (otherUser == null)
+                {
+                    return Json(new { success = false });
+                }
+
+                var result = MarkMessagesAsRead(userEmail, otherUser.Email);
+                return Json(new { success = result });
             }
-
-            [HttpPost]
-            public async Task<IActionResult> MarkGroupMessagesAsRead(int groupId)
+            catch (Exception ex)
             {
-                try
-                {
-                    var userEmail = HttpContext.Session.GetString("Email");
-                    var userId = HttpContext.Session.GetString("UserId");
-
-                    if (string.IsNullOrEmpty(userEmail))
-                    {
-                        return Json(new { success = false });
-                    }
-
-                    var result = MarkGroupMessagesAsReadForUser(userEmail, groupId);
-
-                    // Return updated chat list
-                    if (result)
-                    {
-                        var users = GetAllUsersWithLastMessage(userId, userEmail);
-                        var groups = GetUserGroups(userEmail);
-                        var combinedChats = BuildCombinedChats(users, groups, userId, userEmail);
-
-                        // Broadcast to update this user's chat list UI
-                        await _hubContext.Clients.Group($"chatlist_{userId}").SendAsync("UpdateChatList");
-
-                        return Json(new
-                        {
-                            success = true,
-                            chats = combinedChats,
-                            unreadMessages = GetUnreadMessagesCount(userEmail)
-                        });
-                    }
-
-                    return Json(new { success = false });
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error marking group messages as read: {ex.Message}");
-                    return Json(new { success = false });
-                }
+                Console.WriteLine($"Error marking messages as read: {ex.Message}");
+                return Json(new { success = false });
             }
+        }
 
-            private bool MarkMessagesAsRead(string userEmail, string otherUserEmail)
+        [HttpPost]
+        public async Task<IActionResult> MarkGroupMessagesAsRead(int groupId)
+        {
+            try
             {
-                try
-                {
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        connection.Open();
+                var userEmail = HttpContext.Session.GetString("Email");
+                var userId = HttpContext.Session.GetString("UserId");
 
-                        var query = @"
+                if (string.IsNullOrEmpty(userEmail))
+                {
+                    return Json(new { success = false });
+                }
+
+                var result = MarkGroupMessagesAsReadForUser(userEmail, groupId);
+
+                // Return updated chat list
+                if (result)
+                {
+                    var users = GetAllUsersWithLastMessage(userId, userEmail);
+                    var groups = GetUserGroups(userEmail);
+                    var combinedChats = BuildCombinedChats(users, groups, userId, userEmail);
+
+                    // Broadcast to update this user's chat list UI
+                    await _chatHub.Clients.Group($"chatlist_{userId}").SendAsync("UpdateChatList");
+
+                    return Json(new
+                    {
+                        success = true,
+                        chats = combinedChats,
+                        unreadMessages = GetUnreadMessagesCount(userEmail)
+                    });
+                }
+
+                return Json(new { success = false });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error marking group messages as read: {ex.Message}");
+                return Json(new { success = false });
+            }
+        }
+
+        private bool MarkMessagesAsRead(string userEmail, string otherUserEmail)
+        {
+            try
+            {
+                using (var connection = new NpgsqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    var query = @"
                 UPDATE messages 
                 SET is_read = 1 
                 WHERE receiver_email = @UserEmail 
                 AND sender_email = @OtherUserEmail 
                 AND is_read = 0";
 
-                        using (var command = new NpgsqlCommand(query, connection))
-                        {
-                            command.Parameters.AddWithValue("@UserEmail", userEmail);
-                            command.Parameters.AddWithValue("@OtherUserEmail", otherUserEmail);
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@UserEmail", userEmail);
+                        command.Parameters.AddWithValue("@OtherUserEmail", otherUserEmail);
 
-                            int rowsAffected = command.ExecuteNonQuery();
-                            return rowsAffected >= 0;
-                        }
+                        int rowsAffected = command.ExecuteNonQuery();
+                        return rowsAffected >= 0;
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error in MarkMessagesAsRead: {ex.Message}");
-                    return false;
-                }
             }
-
-            private bool MarkGroupMessagesAsReadForUser(string userEmail, int groupId)
+            catch (Exception ex)
             {
-                try
+                Console.WriteLine($"Error in MarkMessagesAsRead: {ex.Message}");
+                return false;
+            }
+        }
+
+        private bool MarkGroupMessagesAsReadForUser(string userEmail, int groupId)
+        {
+            try
+            {
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        connection.Open();
+                    connection.Open();
 
-                        // First, ensure the group_message_read_status table exists
-                        EnsureGroupMessageReadStatusTableExists(connection);
+                    // First, ensure the group_message_read_status table exists
+                    EnsureGroupMessageReadStatusTableExists(connection);
 
-                        // Get all unread messages for this group that the user hasn't marked as read
-                        var getUnreadMessagesQuery = @"
+                    // Get all unread messages for this group that the user hasn't marked as read
+                    var getUnreadMessagesQuery = @"
                 SELECT gm.id
                 FROM group_messages gm
                 INNER JOIN group_members gmm ON gm.group_id = gmm.group_id
@@ -1699,55 +1824,86 @@ namespace MessangerWeb.Controllers
                     AND gmrs.has_read = TRUE
                 )";
 
-                        var unreadMessageIds = new List<int>();
-                        using (var command = new NpgsqlCommand(getUnreadMessagesQuery, connection))
-                        {
-                            command.Parameters.AddWithValue("@GroupId", groupId);
-                            command.Parameters.AddWithValue("@UserEmail", userEmail);
+                    var unreadMessageIds = new List<int>();
+                    using (var command = new NpgsqlCommand(getUnreadMessagesQuery, connection))
+                    {
+                        command.Parameters.AddWithValue("@GroupId", groupId);
+                        command.Parameters.AddWithValue("@UserEmail", userEmail);
 
-                            using (var reader = command.ExecuteReader())
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
                             {
-                                while (reader.Read())
-                                {
-                                    unreadMessageIds.Add(Convert.ToInt32(reader["id"]));
-                                }
+                                unreadMessageIds.Add(Convert.ToInt32(reader["id"]));
                             }
                         }
+                    }
 
-                        // Mark each unread message as read for this specific user
-                        if (unreadMessageIds.Count > 0)
-                        {
-                            var insertQuery = @"
+                    // Mark each unread message as read for this specific user
+                    if (unreadMessageIds.Count > 0)
+                    {
+                        var insertQuery = @"
                     INSERT INTO group_message_read_status (group_message_id, user_email, has_read, read_at) 
                     VALUES (@MessageId, @UserEmail, TRUE, NOW())
                     ON CONFLICT (group_message_id, user_email) DO UPDATE SET has_read = TRUE, read_at = NOW()";
 
-                            foreach (var messageId in unreadMessageIds)
+                        foreach (var messageId in unreadMessageIds)
+                        {
+                            using (var command = new NpgsqlCommand(insertQuery, connection))
                             {
-                                using (var command = new NpgsqlCommand(insertQuery, connection))
-                                {
-                                    command.Parameters.AddWithValue("@MessageId", messageId);
-                                    command.Parameters.AddWithValue("@UserEmail", userEmail);
-                                    command.ExecuteNonQuery();
-                                }
+                                command.Parameters.AddWithValue("@MessageId", messageId);
+                                command.Parameters.AddWithValue("@UserEmail", userEmail);
+                                command.ExecuteNonQuery();
                             }
                         }
-
-                        return true;
                     }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error in MarkGroupMessagesAsReadForUser: {ex.Message}");
-                    return false;
+
+                    return true;
                 }
             }
-
-            private void EnsureGroupMessageReadStatusTableExists(NpgsqlConnection connection)
+            catch (Exception ex)
             {
-                try
+                Console.WriteLine($"Error in MarkGroupMessagesAsReadForUser: {ex.Message}");
+                return false;
+            }
+        }
+
+        private void EnsureGroupMessagesTableExists(NpgsqlConnection connection)
+        {
+            try
+            {
+                // First check if column 'id' exists
+                var checkColumnQuery = @"
+                    SELECT count(*) FROM information_schema.columns 
+                    WHERE table_name = 'group_messages' AND column_name = 'id'";
+
+                bool hasId = false;
+                using (var cmd = new NpgsqlCommand(checkColumnQuery, connection))
                 {
-                    var createTableQuery = @"
+                    hasId = Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                }
+
+                if (!hasId)
+                {
+                    Console.WriteLine("[EnsureGroupMessagesTableExists] Adding 'id' column to group_messages");
+                    var alterQuery = @"ALTER TABLE group_messages ADD COLUMN id SERIAL PRIMARY KEY";
+                    using (var cmd = new NpgsqlCommand(alterQuery, connection))
+                    {
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error ensuring group_messages schema: {ex.Message}");
+            }
+        }
+
+        private void EnsureGroupMessageReadStatusTableExists(NpgsqlConnection connection)
+        {
+            try
+            {
+                var createTableQuery = @"
             CREATE TABLE IF NOT EXISTS group_message_read_status (
                 id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
                 group_message_id INT NOT NULL,
@@ -1759,171 +1915,171 @@ namespace MessangerWeb.Controllers
                 FOREIGN KEY (group_message_id) REFERENCES group_messages(id) ON DELETE CASCADE
             )";
 
-                    using (var command = new NpgsqlCommand(createTableQuery, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                }
-                catch (Exception ex)
+                using (var command = new NpgsqlCommand(createTableQuery, connection))
                 {
-                    Console.WriteLine($"Error ensuring table exists: {ex.Message}");
+                    command.ExecuteNonQuery();
                 }
             }
-
-            [HttpGet]
-            public IActionResult GetGroupMembers(int groupId)
+            catch (Exception ex)
             {
-                var userEmail = HttpContext.Session.GetString("Email");
-                if (string.IsNullOrEmpty(userEmail))
-                {
-                    return Json(new { success = false, message = "User not logged in" });
-                }
+                Console.WriteLine($"Error ensuring table exists: {ex.Message}");
+            }
+        }
 
-                try
-                {
-                    var members = new List<object>();
-                    string groupCreator = "";
+        [HttpGet]
+        public IActionResult GetGroupMembers(int groupId)
+        {
+            var userEmail = HttpContext.Session.GetString("Email");
+            if (string.IsNullOrEmpty(userEmail))
+            {
+                return Json(new { success = false, message = "User not logged in" });
+            }
 
-                    using (var connection = new NpgsqlConnection(connectionString))
+            try
+            {
+                var members = new List<object>();
+                string groupCreator = "";
+
+                using (var connection = new NpgsqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    // Get group creator
+                    var creatorQuery = "SELECT created_by FROM \"groups\" WHERE group_id = @GroupId";
+                    using (var command = new NpgsqlCommand(creatorQuery, connection))
                     {
-                        connection.Open();
-
-                        // Get group creator
-                        var creatorQuery = "SELECT created_by FROM \"groups\" WHERE group_id = @GroupId";
-                        using (var command = new NpgsqlCommand(creatorQuery, connection))
+                        command.Parameters.AddWithValue("@GroupId", groupId);
+                        var result = command.ExecuteScalar();
+                        if (result != null)
                         {
-                            command.Parameters.AddWithValue("@GroupId", groupId);
-                            var result = command.ExecuteScalar();
-                            if (result != null)
-                            {
-                                groupCreator = result.ToString();
-                            }
+                            groupCreator = result.ToString();
                         }
+                    }
 
-                        // Get all members
-                        var query = @"SELECT s.id, s.firstname, s.lastname, s.email, s.photo, gm.joined_at
+                    // Get all members
+                    var query = @"SELECT s.id, s.firstname, s.lastname, s.email, s.photo, gm.joined_at
                                  FROM group_members gm
                                  INNER JOIN students s ON gm.student_email = s.email
                                  WHERE gm.group_id = @GroupId
                                  ORDER BY gm.joined_at ASC";
 
-                        using (var command = new NpgsqlCommand(query, connection))
-                        {
-                            command.Parameters.AddWithValue("@GroupId", groupId);
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@GroupId", groupId);
 
-                            using (var reader = command.ExecuteReader())
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
                             {
-                                while (reader.Read())
+                                string memberEmail = reader["email"].ToString();
+                                byte[] photoData = null;
+                                if (reader["photo"] != DBNull.Value)
                                 {
-                                    string memberEmail = reader["email"].ToString();
-                                    byte[] photoData = null;
-                                    if (reader["photo"] != DBNull.Value)
-                                    {
-                                        photoData = (byte[])reader["photo"];
-                                    }
-
-                                    string photoBase64 = photoData != null ? Convert.ToBase64String(photoData) : null;
-
-                                    members.Add(new
-                                    {
-                                        userId = reader["id"].ToString(),
-                                        firstName = reader["firstname"].ToString(),
-                                        lastName = reader["lastname"].ToString(),
-                                        fullName = $"{reader["firstname"]} {reader["lastname"]}",
-                                        email = memberEmail,
-                                        photoBase64 = photoBase64,
-                                        canRemove = userEmail == groupCreator && memberEmail != groupCreator
-                                    });
+                                    photoData = (byte[])reader["photo"];
                                 }
-                            }
-                        }
-                    }
 
-                    return Json(new { success = true, members = members });
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error getting group members: {ex.Message}");
-                    return Json(new { success = false, message = "Error loading group members" });
-                }
-            }
+                                string photoBase64 = photoData != null ? Convert.ToBase64String(photoData) : null;
 
-            [HttpPost]
-            public async Task<IActionResult> RemoveMemberFromGroup(int groupId, string memberEmail)
-            {
-                var userEmail = HttpContext.Session.GetString("Email");
-                if (string.IsNullOrEmpty(userEmail))
-                {
-                    return Json(new { success = false, message = "User not logged in" });
-                }
-
-                try
-                {
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        connection.Open();
-
-                        // Check if user is group creator
-                        var checkQuery = "SELECT created_by FROM \"groups\" WHERE group_id = @GroupId";
-                        using (var command = new NpgsqlCommand(checkQuery, connection))
-                        {
-                            command.Parameters.AddWithValue("@GroupId", groupId);
-                            var createdBy = command.ExecuteScalar()?.ToString();
-
-                            if (createdBy != userEmail)
-                            {
-                                return Json(new { success = false, message = "Only group creator can remove members" });
-                            }
-                        }
-
-                        // Don't allow removing the creator
-                        var deleteQuery = "DELETE FROM group_members WHERE group_id = @GroupId AND student_email = @MemberEmail AND student_email != (SELECT created_by FROM \"groups\" WHERE group_id = @GroupId)";
-                        using (var command = new NpgsqlCommand(deleteQuery, connection))
-                        {
-                            command.Parameters.AddWithValue("@GroupId", groupId);
-                            command.Parameters.AddWithValue("@MemberEmail", memberEmail);
-
-                            int rowsAffected = command.ExecuteNonQuery();
-
-                            if (rowsAffected > 0)
-                            {
-                                // Broadcast to all group members via SignalR
-                                await _hubContext.Clients.Group($"group_{groupId}").SendAsync("GroupMemberRemoved", new { groupId, memberEmail });
-
-                                return Json(new { success = true, message = "Member removed successfully" });
-                            }
-                            else
-                            {
-                                return Json(new { success = false, message = "Failed to remove member or cannot remove group creator" });
+                                members.Add(new
+                                {
+                                    userId = reader["id"].ToString(),
+                                    firstName = reader["firstname"].ToString(),
+                                    lastName = reader["lastname"].ToString(),
+                                    fullName = $"{reader["firstname"]} {reader["lastname"]}",
+                                    email = memberEmail,
+                                    photoBase64 = photoBase64,
+                                    canRemove = userEmail == groupCreator && memberEmail != groupCreator
+                                });
                             }
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error removing member: {ex.Message}");
-                    return Json(new { success = false, message = "Error removing member from group" });
-                }
+
+                return Json(new { success = true, members = members });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting group members: {ex.Message}");
+                return Json(new { success = false, message = "Error loading group members" });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> RemoveMemberFromGroup(int groupId, string memberEmail)
+        {
+            var userEmail = HttpContext.Session.GetString("Email");
+            if (string.IsNullOrEmpty(userEmail))
+            {
+                return Json(new { success = false, message = "User not logged in" });
             }
 
-            [HttpGet]
-            public IActionResult GetAvailableMembers(int groupId)
+            try
             {
-                var userEmail = HttpContext.Session.GetString("Email");
-                if (string.IsNullOrEmpty(userEmail))
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    return Json(new { success = false, message = "User not logged in" });
-                }
+                    connection.Open();
 
-                try
-                {
-                    var availableMembers = new List<object>();
-
-                    using (var connection = new NpgsqlConnection(connectionString))
+                    // Check if user is group creator
+                    var checkQuery = "SELECT created_by FROM \"groups\" WHERE group_id = @GroupId";
+                    using (var command = new NpgsqlCommand(checkQuery, connection))
                     {
-                        connection.Open();
+                        command.Parameters.AddWithValue("@GroupId", groupId);
+                        var createdBy = command.ExecuteScalar()?.ToString();
 
-                        var query = @"SELECT s.id, s.firstname, s.lastname, s.email, s.photo
+                        if (createdBy != userEmail)
+                        {
+                            return Json(new { success = false, message = "Only group creator can remove members" });
+                        }
+                    }
+
+                    // Don't allow removing the creator
+                    var deleteQuery = "DELETE FROM group_members WHERE group_id = @GroupId AND student_email = @MemberEmail AND student_email != (SELECT created_by FROM \"groups\" WHERE group_id = @GroupId)";
+                    using (var command = new NpgsqlCommand(deleteQuery, connection))
+                    {
+                        command.Parameters.AddWithValue("@GroupId", groupId);
+                        command.Parameters.AddWithValue("@MemberEmail", memberEmail);
+
+                        int rowsAffected = command.ExecuteNonQuery();
+
+                        if (rowsAffected > 0)
+                        {
+                            // Broadcast to all group members via SignalR
+                            await _chatHub.Clients.Group($"group_{groupId}").SendAsync("GroupMemberRemoved", new { groupId, memberEmail });
+
+                            return Json(new { success = true, message = "Member removed successfully" });
+                        }
+                        else
+                        {
+                            return Json(new { success = false, message = "Failed to remove member or cannot remove group creator" });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error removing member: {ex.Message}");
+                return Json(new { success = false, message = "Error removing member from group" });
+            }
+        }
+
+        [HttpGet]
+        public IActionResult GetAvailableMembers(int groupId)
+        {
+            var userEmail = HttpContext.Session.GetString("Email");
+            if (string.IsNullOrEmpty(userEmail))
+            {
+                return Json(new { success = false, message = "User not logged in" });
+            }
+
+            try
+            {
+                var availableMembers = new List<object>();
+
+                using (var connection = new NpgsqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    var query = @"SELECT s.id, s.firstname, s.lastname, s.email, s.photo
                                  FROM students s
                                  WHERE s.status = 'Active'
                                  AND s.email NOT IN (
@@ -1932,103 +2088,103 @@ namespace MessangerWeb.Controllers
                                  AND s.email != @UserEmail
                                  ORDER BY s.firstname, s.lastname";
 
-                        using (var command = new NpgsqlCommand(query, connection))
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@GroupId", groupId);
+                        command.Parameters.AddWithValue("@UserEmail", userEmail);
+
+                        using (var reader = command.ExecuteReader())
                         {
-                            command.Parameters.AddWithValue("@GroupId", groupId);
-                            command.Parameters.AddWithValue("@UserEmail", userEmail);
-
-                            using (var reader = command.ExecuteReader())
+                            while (reader.Read())
                             {
-                                while (reader.Read())
+                                byte[] photoData = null;
+                                if (reader["photo"] != DBNull.Value)
                                 {
-                                    byte[] photoData = null;
-                                    if (reader["photo"] != DBNull.Value)
-                                    {
-                                        photoData = (byte[])reader["photo"];
-                                    }
-
-                                    string photoBase64 = photoData != null ? Convert.ToBase64String(photoData) : null;
-
-                                    availableMembers.Add(new
-                                    {
-                                        userId = reader["id"].ToString(),
-                                        firstName = reader["firstname"].ToString(),
-                                        lastName = reader["lastname"].ToString(),
-                                        fullName = $"{reader["firstname"]} {reader["lastname"]}",
-                                        email = reader["email"].ToString(),
-                                        photoBase64 = photoBase64
-                                    });
+                                    photoData = (byte[])reader["photo"];
                                 }
+
+                                string photoBase64 = photoData != null ? Convert.ToBase64String(photoData) : null;
+
+                                availableMembers.Add(new
+                                {
+                                    userId = reader["id"].ToString(),
+                                    firstName = reader["firstname"].ToString(),
+                                    lastName = reader["lastname"].ToString(),
+                                    fullName = $"{reader["firstname"]} {reader["lastname"]}",
+                                    email = reader["email"].ToString(),
+                                    photoBase64 = photoBase64
+                                });
                             }
                         }
                     }
+                }
 
-                    return Json(new { success = true, availableMembers = availableMembers });
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error getting available members: {ex.Message}");
-                    return Json(new { success = false, message = "Error loading available members" });
-                }
+                return Json(new { success = true, availableMembers = availableMembers });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting available members: {ex.Message}");
+                return Json(new { success = false, message = "Error loading available members" });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddMembersToGroup([FromBody] AddMembersModel model)
+        {
+            var userEmail = HttpContext.Session.GetString("Email");
+            if (string.IsNullOrEmpty(userEmail))
+            {
+                return Json(new { success = false, message = "User not logged in" });
             }
 
-            [HttpPost]
-            public async Task<IActionResult> AddMembersToGroup([FromBody] AddMembersModel model)
+            if (model.MemberEmails == null || !model.MemberEmails.Any())
             {
-                var userEmail = HttpContext.Session.GetString("Email");
-                if (string.IsNullOrEmpty(userEmail))
-                {
-                    return Json(new { success = false, message = "User not logged in" });
-                }
+                return Json(new { success = false, message = "No members selected" });
+            }
 
-                if (model.MemberEmails == null || !model.MemberEmails.Any())
+            try
+            {
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    return Json(new { success = false, message = "No members selected" });
-                }
+                    connection.Open();
 
-                try
-                {
-                    using (var connection = new NpgsqlConnection(connectionString))
+                    // Check if user is group creator
+                    var checkQuery = "SELECT created_by FROM \"groups\" WHERE group_id = @GroupId";
+                    using (var command = new NpgsqlCommand(checkQuery, connection))
                     {
-                        connection.Open();
+                        command.Parameters.AddWithValue("@GroupId", model.GroupId);
+                        var createdBy = command.ExecuteScalar()?.ToString();
 
-                        // Check if user is group creator
-                        var checkQuery = "SELECT created_by FROM \"groups\" WHERE group_id = @GroupId";
-                        using (var command = new NpgsqlCommand(checkQuery, connection))
+                        if (createdBy != userEmail)
+                        {
+                            return Json(new { success = false, message = "Only group creator can add members" });
+                        }
+                    }
+
+                    var insertQuery = "INSERT INTO group_members (group_id, student_email, joined_at) VALUES (@GroupId, @StudentEmail, NOW())";
+
+                    foreach (var memberEmail in model.MemberEmails)
+                    {
+                        using (var command = new NpgsqlCommand(insertQuery, connection))
                         {
                             command.Parameters.AddWithValue("@GroupId", model.GroupId);
-                            var createdBy = command.ExecuteScalar()?.ToString();
-
-                            if (createdBy != userEmail)
-                            {
-                                return Json(new { success = false, message = "Only group creator can add members" });
-                            }
+                            command.Parameters.AddWithValue("@StudentEmail", memberEmail);
+                            command.ExecuteNonQuery();
                         }
-
-                        var insertQuery = "INSERT INTO group_members (group_id, student_email, joined_at) VALUES (@GroupId, @StudentEmail, NOW())";
-
-                        foreach (var memberEmail in model.MemberEmails)
-                        {
-                            using (var command = new NpgsqlCommand(insertQuery, connection))
-                            {
-                                command.Parameters.AddWithValue("@GroupId", model.GroupId);
-                                command.Parameters.AddWithValue("@StudentEmail", memberEmail);
-                                command.ExecuteNonQuery();
-                            }
-                        }
-
-                        // Broadcast to all group members via SignalR
-                        await _hubContext.Clients.Group($"group_{model.GroupId}").SendAsync("GroupMembersAdded", new { groupId = model.GroupId, memberEmails = model.MemberEmails });
-
-                        return Json(new { success = true, message = "Members added successfully" });
                     }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error adding members: {ex.Message}");
-                    return Json(new { success = false, message = "Error adding members to group" });
+
+                    // Broadcast to all group members via SignalR
+                    await _chatHub.Clients.Group($"group_{model.GroupId}").SendAsync("GroupMembersAdded", new { groupId = model.GroupId, memberEmails = model.MemberEmails });
+
+                    return Json(new { success = true, message = "Members added successfully" });
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error adding members: {ex.Message}");
+                return Json(new { success = false, message = "Error adding members to group" });
+            }
+        }
 
         [HttpPost]
         public async Task<IActionResult> UpdateGroup([FromForm] UpdateGroupModel model)
@@ -2060,6 +2216,7 @@ namespace MessangerWeb.Controllers
 
                     string query;
                     NpgsqlCommand updateCommand;
+                    string groupImageBase64 = null;
 
                     if (model.GroupImage != null && model.GroupImage.Length > 0)
                     {
@@ -2067,6 +2224,7 @@ namespace MessangerWeb.Controllers
                         {
                             model.GroupImage.CopyTo(memoryStream);
                             var imageData = memoryStream.ToArray();
+                            groupImageBase64 = Convert.ToBase64String(imageData);
 
                             query = "UPDATE \"groups\" SET group_name = @GroupName, group_image = @GroupImage, updated_at = NOW() WHERE group_id = @GroupId";
                             updateCommand = new NpgsqlCommand(query, connection);
@@ -2087,16 +2245,7 @@ namespace MessangerWeb.Controllers
 
                     if (rowsAffected > 0)
                     {
-                        string groupImageBase64 = null;
-                        if (model.GroupImage != null && model.GroupImage.Length > 0)
-                        {
-                            using (var memoryStream = new MemoryStream())
-                            {
-                                model.GroupImage.CopyTo(memoryStream);
-                                groupImageBase64 = Convert.ToBase64String(memoryStream.ToArray());
-                            }
-                        }
-                        else
+                        if (groupImageBase64 == null)
                         {
                             // Get existing image if no new image was uploaded
                             var getImageQuery = "SELECT group_image FROM \"groups\" WHERE group_id = @GroupId";
@@ -2112,8 +2261,8 @@ namespace MessangerWeb.Controllers
                             }
                         }
 
-                        // Trigger real-time notification
-                        await _notificationService.NotifyGroupUpdated(model.GroupId.ToString());
+                        // REAL-TIME BROADCAST
+                        await BroadcastGroupUpdate(model.GroupId, model.GroupName, groupImageBase64);
 
                         return Json(new
                         {
@@ -2133,77 +2282,6 @@ namespace MessangerWeb.Controllers
                 Console.WriteLine($"Error updating group: {ex.Message}");
                 return Json(new { success = false, message = "Error updating group" });
             }
-        }
-
-        [HttpGet]
-        public IActionResult GetGroupInfo(string groupId)
-        {
-            try
-            {
-                var group = GetGroupById(groupId);
-                if (group == null)
-                {
-                    return Json(new { success = false, message = "Group not found" });
-                }
-
-                return Json(new
-                {
-                    success = true,
-                    groupName = group.GroupName,
-                    groupPhotoBase64 = group.GroupImageBase64
-                });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = ex.Message });
-            }
-        }
-
-        private GroupInfo GetGroupById(string groupId)
-        {
-            if (!int.TryParse(groupId, out int id))
-            {
-                return null;
-            }
-
-            try
-            {
-                using (var connection = new NpgsqlConnection(connectionString))
-                {
-                    connection.Open();
-                    var query = @"SELECT * FROM ""groups"" WHERE group_id = @GroupId";
-
-                    using (var command = new NpgsqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@GroupId", id);
-
-                        using (var reader = command.ExecuteReader())
-                        {
-                            if (reader.Read())
-                            {
-                                byte[] groupImage = null;
-                                if (reader["group_image"] != DBNull.Value)
-                                {
-                                    groupImage = (byte[])reader["group_image"];
-                                }
-
-                                return new GroupInfo
-                                {
-                                    GroupId = Convert.ToInt32(reader["group_id"]),
-                                    GroupName = reader["group_name"].ToString(),
-                                    GroupImage = groupImage
-                                };
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error fetching group: {ex.Message}");
-            }
-
-            return null;
         }
 
         private List<UserInfo> GetAllUsersWithLastMessage(string currentUserId, string currentUserEmail)
@@ -2293,540 +2371,512 @@ namespace MessangerWeb.Controllers
             return users;
         }
 
-        private List<CombinedChatEntry> GetUnifiedChatsInternal(string currentUserId, string currentUserEmail)
+        private List<CombinedChatEntry> GetUnifiedChatsInternal(string currentUserId, string currentUserEmail, string selectedUserId = null, string selectedGroupId = null)
+        {
+            try
             {
-                try
-                {
-                    var users = GetAllUsersWithLastMessage(currentUserId, currentUserEmail);
-                    var groups = GetUserGroups(currentUserEmail);
+                Console.WriteLine($"[GetUnifiedChatsInternal] Fetching for user: {currentUserEmail}");
+                var users = GetAllUsersWithLastMessage(currentUserId, currentUserEmail);
+                Console.WriteLine($"[GetUnifiedChatsInternal] Found {users?.Count ?? 0} users");
 
-                    return BuildCombinedChats(users, groups);
-                }
-                catch
-                {
-                    return new List<CombinedChatEntry>();
-                }
+                var groups = GetUserGroups(currentUserEmail);
+                Console.WriteLine($"[GetUnifiedChatsInternal] Found {groups?.Count ?? 0} groups");
+
+                var combined = BuildCombinedChats(users, groups, selectedUserId, selectedGroupId);
+                Console.WriteLine($"[GetUnifiedChatsInternal] Built {combined?.Count ?? 0} combined chats");
+
+                return combined;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GetUnifiedChatsInternal] CRITICAL ERROR: {ex.Message}");
+                Console.WriteLine($"[GetUnifiedChatsInternal] Stack: {ex.StackTrace}");
+                return new List<CombinedChatEntry>();
+            }
+        }
+
+        [HttpGet]
+        public IActionResult GetUnifiedChats()
+        {
+            var userId = HttpContext.Session.GetString("UserId");
+            var userEmail = HttpContext.Session.GetString("Email");
+
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(userEmail))
+            {
+                return Json(new { success = false, message = "User not authenticated" });
             }
 
-            [HttpGet]
-            public IActionResult GetUnifiedChats()
+            var chats = GetUnifiedChatsInternal(userId, userEmail, null, null);
+            return Json(new { success = true, chats });
+        }
+
+        // Video Call History Methods
+        [HttpPost]
+        public async Task<IActionResult> StartVideoCall([FromBody] StartCallRequest request)
+        {
+            try
             {
                 var userId = HttpContext.Session.GetString("UserId");
-                var userEmail = HttpContext.Session.GetString("Email");
-
-                if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(userEmail))
+                if (string.IsNullOrEmpty(userId))
                 {
                     return Json(new { success = false, message = "User not authenticated" });
                 }
 
-                var chats = GetUnifiedChatsInternal(userId, userEmail);
-                return Json(new { success = true, chats });
-            }
+                // Generate a unique call ID
+                var callId = Guid.NewGuid().ToString();
 
-            // Video Call History Methods
-            [HttpPost]
-            public async Task<IActionResult> StartVideoCall([FromBody] StartCallRequest request)
+                // Save call to database
+                await _videoCallHistoryService.StartCallAsync(
+                    callId,
+                    int.Parse(userId),
+                    request.ReceiverType,
+                    request.ReceiverId,
+                    "Video");
+
+                return Json(new
+                {
+                    success = true,
+                    callId = callId,
+                    message = "Call started successfully"
+                });
+            }
+            catch (Exception ex)
             {
-                try
+                _logger.LogError(ex, "Error starting video call");
+                return Json(new
                 {
-                    var userId = HttpContext.Session.GetString("UserId");
-                    if (string.IsNullOrEmpty(userId))
-                    {
-                        return Json(new { success = false, message = "User not authenticated" });
-                    }
-
-                    // Generate a unique call ID
-                    var callId = Guid.NewGuid().ToString();
-
-                    // Save call to database
-                    await _videoCallHistoryService.StartCallAsync(
-                        callId,
-                        int.Parse(userId),
-                        request.ReceiverType,
-                        request.ReceiverId,
-                        "Video");
-
-                    return Json(new
-                    {
-                        success = true,
-                        callId = callId,
-                        message = "Call started successfully"
-                    });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error starting video call");
-                    return Json(new
-                    {
-                        success = false,
-                        message = $"Error starting call: {ex.Message}"
-                    });
-                }
+                    success = false,
+                    message = $"Error starting call: {ex.Message}"
+                });
             }
+        }
 
-            [HttpPost]
-            public async Task<IActionResult> UpdateCallStatus([FromBody] UpdateCallStatusRequest request)
+        [HttpPost]
+        public async Task<IActionResult> UpdateCallStatus([FromBody] UpdateCallStatusRequest request)
+        {
+            try
             {
-                try
-                {
-                    var success = await _videoCallHistoryService.UpdateCallStatusAsync(
-                        request.CallId, request.Status);
+                var success = await _videoCallHistoryService.UpdateCallStatusAsync(
+                    request.CallId, request.Status);
 
-                    return Json(new { success = success });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error updating call status");
-                    return Json(new { success = false, message = "Error updating call status" });
-                }
+                return Json(new { success = success });
             }
-
-            [HttpPost]
-            public async Task<IActionResult> EndVideoCall([FromBody] EndCallRequest request)
+            catch (Exception ex)
             {
-                try
-                {
-                    var success = await _videoCallHistoryService.UpdateCallStatusAsync(
-                        request.CallId, request.Status);
-
-                    return Json(new { success = success });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error ending video call");
-                    return Json(new { success = false, message = "Error ending call" });
-                }
+                _logger.LogError(ex, "Error updating call status");
+                return Json(new { success = false, message = "Error updating call status" });
             }
+        }
 
-            [HttpPost]
-            public async Task<IActionResult> SaveCallDurationMessage([FromBody] SaveCallDurationRequest request)
+        [HttpPost]
+        public async Task<IActionResult> EndVideoCall([FromBody] EndCallRequest request)
+        {
+            try
             {
-                try
-                {
-                    var userId = HttpContext.Session.GetString("UserId");
-                    var userEmail = HttpContext.Session.GetString("Email");
-                    var userName = HttpContext.Session.GetString("FirstName") + " " + HttpContext.Session.GetString("LastName");
+                var success = await _videoCallHistoryService.UpdateCallStatusAsync(
+                    request.CallId, request.Status);
 
-                    if (string.IsNullOrEmpty(userId))
-                    {
-                        return Json(new { success = false, message = "User not authenticated" });
-                    }
-
-                    // Determine if this is a group or individual call
-                    if (request.CallType == "Group" && !string.IsNullOrEmpty(request.GroupId))
-                    {
-                        // Save group call message
-                        await SaveGroupCallDurationMessage(request, userEmail, userName);
-                    }
-                    else
-                    {
-                        // Save individual call message
-                        await SaveIndividualCallDurationMessage(request, userEmail);
-                    }
-
-                    // Update the call status and duration in video call history
-                    await _videoCallHistoryService.UpdateCallStatusAsync(request.CallId, "Completed");
-                    await _videoCallHistoryService.UpdateCallDurationAsync(request.CallId, request.Duration);
-
-                    return Json(new { success = true, message = "Call duration saved successfully" });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error saving call duration message");
-                    return Json(new { success = false, message = "Error saving call duration" });
-                }
+                return Json(new { success = success });
             }
-
-            private async Task SaveIndividualCallDurationMessage(SaveCallDurationRequest request, string userEmail)
+            catch (Exception ex)
             {
-                using (var connection = new NpgsqlConnection(connectionString))
-                {
-                    await connection.OpenAsync();
-
-                    // Get receiver email
-                    var receiverEmail = await GetUserEmailById(request.ReceiverId);
-                    if (string.IsNullOrEmpty(receiverEmail))
-                    {
-                        throw new Exception("Receiver not found");
-                    }
-
-                    // Create the call duration message
-                    var callMessage = $"Video call ended (Duration: {request.FormattedDuration})";
-
-                    var query = @"INSERT INTO messages (sender_email, receiver_email, message, sent_at, is_read, is_call_message, call_duration, call_status) 
-                     VALUES (@SenderEmail, @ReceiverEmail, @Message, NOW(), 0, 1, @CallDuration, @CallStatus)";
-
-                    using (var command = new NpgsqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@SenderEmail", userEmail);
-                        command.Parameters.AddWithValue("@ReceiverEmail", receiverEmail);
-                        command.Parameters.AddWithValue("@Message", callMessage);
-                        command.Parameters.AddWithValue("@CallDuration", request.FormattedDuration);
-                        command.Parameters.AddWithValue("@CallStatus", "Completed");
-                        await command.ExecuteNonQueryAsync();
-                    }
-                }
+                _logger.LogError(ex, "Error ending video call");
+                return Json(new { success = false, message = "Error ending call" });
             }
+        }
 
-            private async Task<string> GetUserEmailById(string userId)
-            {
-                using (var connection = new NpgsqlConnection(connectionString))
-                {
-                    await connection.OpenAsync();
-
-                    var query = "SELECT \"email\" FROM students WHERE \"id\" = @UserId";
-                    using (var command = new NpgsqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@UserId", int.Parse(userId));
-                        var result = await command.ExecuteScalarAsync();
-                        return result?.ToString();
-                    }
-                }
-            }
-
-
-            private async Task SaveGroupCallDurationMessage(SaveCallDurationRequest request, string userEmail, string userName)
-            {
-                using (var connection = new NpgsqlConnection(connectionString))
-                {
-                    await connection.OpenAsync();
-
-                    // Create the call duration message
-                    var callMessage = $"{userName} ended a video call (Duration: {request.FormattedDuration})";
-
-                    var query = @"INSERT INTO group_messages (group_id, sender_email, message, sent_at, is_read, is_call_message, call_duration, call_status) 
-                     VALUES (@GroupId, @SenderEmail, @Message, NOW(), 0, 1, @CallDuration, @CallStatus)";
-
-                    using (var command = new NpgsqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@GroupId", request.GroupId);
-                        command.Parameters.AddWithValue("@SenderEmail", userEmail);
-                        command.Parameters.AddWithValue("@Message", callMessage);
-                        command.Parameters.AddWithValue("@CallDuration", request.FormattedDuration);
-                        command.Parameters.AddWithValue("@CallStatus", "Completed");
-                        await command.ExecuteNonQueryAsync();
-                    }
-
-                    // Update group last activity
-                    var updateQuery = "UPDATE `groups` SET last_activity = NOW() WHERE group_id = @GroupId";
-                    using (var command = new NpgsqlCommand(updateQuery, connection))
-                    {
-                        command.Parameters.AddWithValue("@GroupId", request.GroupId);
-                        await command.ExecuteNonQueryAsync();
-                    }
-                }
-            }
-
-            [HttpGet]
-            public IActionResult DebugUserStatus()
+        [HttpPost]
+        public async Task<IActionResult> SaveCallDurationMessage([FromBody] SaveCallDurationRequest request)
+        {
+            try
             {
                 var userId = HttpContext.Session.GetString("UserId");
                 var userEmail = HttpContext.Session.GetString("Email");
                 var userName = HttpContext.Session.GetString("FirstName") + " " + HttpContext.Session.GetString("LastName");
 
-                var isAuthenticated = HttpContext.User?.Identity?.IsAuthenticated ?? false;
-                var authUserId = HttpContext.User?.FindFirst("UserId")?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Json(new { success = false, message = "User not authenticated" });
+                }
+
+                // Determine if this is a group or individual call
+                if (request.CallType == "Group" && !string.IsNullOrEmpty(request.GroupId))
+                {
+                    // Save group call message
+                    await SaveGroupCallDurationMessage(request, userEmail, userName);
+                }
+                else
+                {
+                    // Save individual call message
+                    await SaveIndividualCallDurationMessage(request, userEmail);
+                }
+
+                // Update the call status and duration in video call history
+                await _videoCallHistoryService.UpdateCallStatusAsync(request.CallId, "Completed");
+                await _videoCallHistoryService.UpdateCallDurationAsync(request.CallId, request.Duration);
+
+                return Json(new { success = true, message = "Call duration saved successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving call duration message");
+                return Json(new { success = false, message = "Error saving call duration" });
+            }
+        }
+
+        private async Task SaveIndividualCallDurationMessage(SaveCallDurationRequest request, string userEmail)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+
+                // Get receiver email
+                var receiverEmail = await GetUserEmailById(request.ReceiverId);
+                if (string.IsNullOrEmpty(receiverEmail))
+                {
+                    throw new Exception("Receiver not found");
+                }
+
+                // Create the call duration message
+                var callMessage = $"Video call ended (Duration: {request.FormattedDuration})";
+
+                var query = @"INSERT INTO messages (sender_email, receiver_email, message, sent_at, is_read, is_call_message, call_duration, call_status) 
+                     VALUES (@SenderEmail, @ReceiverEmail, @Message, NOW(), 0, 1, @CallDuration, @CallStatus)";
+
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@SenderEmail", userEmail);
+                    command.Parameters.AddWithValue("@ReceiverEmail", receiverEmail);
+                    command.Parameters.AddWithValue("@Message", callMessage);
+                    command.Parameters.AddWithValue("@CallDuration", request.FormattedDuration);
+                    command.Parameters.AddWithValue("@CallStatus", "Completed");
+                    await command.ExecuteNonQueryAsync();
+                }
+            }
+        }
+
+        private async Task<string> GetUserEmailById(string userId)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+
+                var query = "SELECT \"email\" FROM students WHERE \"id\" = @UserId";
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@UserId", int.Parse(userId));
+                    var result = await command.ExecuteScalarAsync();
+                    return result?.ToString();
+                }
+            }
+        }
+
+
+        private async Task SaveGroupCallDurationMessage(SaveCallDurationRequest request, string userEmail, string userName)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+
+                // Create the call duration message
+                var callMessage = $"{userName} ended a video call (Duration: {request.FormattedDuration})";
+
+                var query = @"INSERT INTO group_messages (group_id, sender_email, message, sent_at, is_read, is_call_message, call_duration, call_status) 
+                     VALUES (@GroupId, @SenderEmail, @Message, NOW(), 0, 1, @CallDuration, @CallStatus)";
+
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@GroupId", request.GroupId);
+                    command.Parameters.AddWithValue("@SenderEmail", userEmail);
+                    command.Parameters.AddWithValue("@Message", callMessage);
+                    command.Parameters.AddWithValue("@CallDuration", request.FormattedDuration);
+                    command.Parameters.AddWithValue("@CallStatus", "Completed");
+                    await command.ExecuteNonQueryAsync();
+                }
+
+                // Update group last activity
+                var updateQuery = "UPDATE `groups` SET last_activity = NOW() WHERE group_id = @GroupId";
+                using (var command = new NpgsqlCommand(updateQuery, connection))
+                {
+                    command.Parameters.AddWithValue("@GroupId", request.GroupId);
+                    await command.ExecuteNonQueryAsync();
+                }
+            }
+        }
+
+        [HttpGet]
+        public IActionResult DebugUserStatus()
+        {
+            var userId = HttpContext.Session.GetString("UserId");
+            var userEmail = HttpContext.Session.GetString("Email");
+            var userName = HttpContext.Session.GetString("FirstName") + " " + HttpContext.Session.GetString("LastName");
+
+            var isAuthenticated = HttpContext.User?.Identity?.IsAuthenticated ?? false;
+            var authUserId = HttpContext.User?.FindFirst("UserId")?.Value;
+
+            return Json(new
+            {
+                success = true,
+                sessionUserId = userId,
+                sessionEmail = userEmail,
+                sessionUserName = userName,
+                isAuthenticated = isAuthenticated,
+                authUserId = authUserId,
+                connectionId = HttpContext.Connection?.Id
+            });
+        }
+
+        [HttpGet]
+        public IActionResult DebugSignalRConnections()
+        {
+            // This would require storing connection info, but for now just return basic info
+            return Json(new
+            {
+                success = true,
+                message = "Debug endpoint - implement connection tracking if needed"
+            });
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetCallHistory()
+        {
+            try
+            {
+                var userId = HttpContext.Session.GetString("UserId");
+                if (string.IsNullOrEmpty(userId))
+                    return Json(new { success = false, message = "User not authenticated" });
+
+                var callHistory = await _videoCallHistoryService.GetCallHistoryAsync(int.Parse(userId));
+                return Json(new { success = true, callHistory = callHistory });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting call history");
+                return Json(new { success = false, message = "Error getting call history" });
+            }
+        }
+
+        [HttpPost]
+        public IActionResult DebugStartVideoCall([FromBody] DebugCallRequest request)
+        {
+            try
+            {
+                var userId = HttpContext.Session.GetString("UserId");
+                var userEmail = HttpContext.Session.GetString("Email");
+
+                Console.WriteLine("=== DEBUG START VIDEO CALL ===");
+                Console.WriteLine($"User ID: {userId}");
+                Console.WriteLine($"User Email: {userEmail}");
+                Console.WriteLine($"Receiver ID: {request.ReceiverId}");
+                Console.WriteLine($"Receiver Type: {request.ReceiverType}");
+
+                // Simulate call creation to see what's happening
+                var callId = Guid.NewGuid().ToString();
+                Console.WriteLine($"Generated Call ID: {callId}");
 
                 return Json(new
                 {
                     success = true,
-                    sessionUserId = userId,
-                    sessionEmail = userEmail,
-                    sessionUserName = userName,
-                    isAuthenticated = isAuthenticated,
-                    authUserId = authUserId,
-                    connectionId = HttpContext.Connection?.Id
+                    callId = callId,
+                    debug = true,
+                    message = "Debug call created successfully"
                 });
             }
-
-            [HttpGet]
-            public IActionResult DebugSignalRConnections()
+            catch (Exception ex)
             {
-                // This would require storing connection info, but for now just return basic info
-                return Json(new
-                {
-                    success = true,
-                    message = "Debug endpoint - implement connection tracking if needed"
-                });
+                Console.WriteLine($"Debug Error: {ex.Message}");
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        public class DebugCallRequest
+        {
+            public string ReceiverId { get; set; }
+            public string ReceiverType { get; set; }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateCallParticipants([FromBody] UpdateParticipantsRequest request)
+        {
+            try
+            {
+                var success = await _videoCallHistoryService.UpdateParticipantsCountAsync(
+                    request.CallId, request.ParticipantsCount);
+
+                return Json(new { success = success });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating call participants");
+                return Json(new { success = false, message = "Error updating participants" });
+            }
+        }
+
+        // ========================================
+        // UNREAD MESSAGE MANAGEMENT ENDPOINTS FOR REALTIME-CHAT.JS
+        // ========================================
+
+        [HttpPost]
+        public IActionResult MarkMessagesAsReadByUserId(string otherUserId)
+        {
+            var currentUserEmail = HttpContext.Session.GetString("Email");
+            if (string.IsNullOrEmpty(currentUserEmail) || string.IsNullOrEmpty(otherUserId))
+            {
+                return Json(new { success = false, message = "Invalid request" });
             }
 
-
-            [HttpGet]
-            public async Task<IActionResult> GetCallHistory()
+            try
             {
-                try
+                // Get the other user's email from their ID
+                string otherUserEmail = null;
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    var userId = HttpContext.Session.GetString("UserId");
-                    if (string.IsNullOrEmpty(userId))
-                        return Json(new { success = false, message = "User not authenticated" });
-
-                    var callHistory = await _videoCallHistoryService.GetCallHistoryAsync(int.Parse(userId));
-                    return Json(new { success = true, callHistory = callHistory });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error getting call history");
-                    return Json(new { success = false, message = "Error getting call history" });
-                }
-            }
-
-            [HttpPost]
-            public IActionResult DebugStartVideoCall([FromBody] DebugCallRequest request)
-            {
-                try
-                {
-                    var userId = HttpContext.Session.GetString("UserId");
-                    var userEmail = HttpContext.Session.GetString("Email");
-
-                    Console.WriteLine("=== DEBUG START VIDEO CALL ===");
-                    Console.WriteLine($"User ID: {userId}");
-                    Console.WriteLine($"User Email: {userEmail}");
-                    Console.WriteLine($"Receiver ID: {request.ReceiverId}");
-                    Console.WriteLine($"Receiver Type: {request.ReceiverType}");
-
-                    // Simulate call creation to see what's happening
-                    var callId = Guid.NewGuid().ToString();
-                    Console.WriteLine($"Generated Call ID: {callId}");
-
-                    return Json(new
+                    connection.Open();
+                    var userQuery = "SELECT email FROM students WHERE id = @UserId";
+                    using (var command = new NpgsqlCommand(userQuery, connection))
                     {
-                        success = true,
-                        callId = callId,
-                        debug = true,
-                        message = "Debug call created successfully"
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Debug Error: {ex.Message}");
-                    return Json(new { success = false, message = ex.Message });
-                }
-            }
-
-            public class DebugCallRequest
-            {
-                public string ReceiverId { get; set; }
-                public string ReceiverType { get; set; }
-            }
-
-            [HttpPost]
-            public async Task<IActionResult> UpdateCallParticipants([FromBody] UpdateParticipantsRequest request)
-            {
-                try
-                {
-                    var success = await _videoCallHistoryService.UpdateParticipantsCountAsync(
-                        request.CallId, request.ParticipantsCount);
-
-                    return Json(new { success = success });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error updating call participants");
-                    return Json(new { success = false, message = "Error updating participants" });
-                }
-            }
-
-            // ========================================
-            // UNREAD MESSAGE MANAGEMENT ENDPOINTS FOR REALTIME-CHAT.JS
-            // ========================================
-
-            [HttpPost]
-            public IActionResult MarkMessagesAsReadByUserId(string otherUserId)
-            {
-                var currentUserEmail = HttpContext.Session.GetString("Email");
-                if (string.IsNullOrEmpty(currentUserEmail) || string.IsNullOrEmpty(otherUserId))
-                {
-                    return Json(new { success = false, message = "Invalid request" });
-                }
-
-                try
-                {
-                    // Get the other user's email from their ID
-                    string otherUserEmail = null;
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        connection.Open();
-                        var userQuery = "SELECT email FROM students WHERE id = @UserId";
-                        using (var command = new NpgsqlCommand(userQuery, connection))
+                        command.Parameters.AddWithValue("@UserId", int.Parse(otherUserId));
+                        var result = command.ExecuteScalar();
+                        if (result != null)
                         {
-                            command.Parameters.AddWithValue("@UserId", int.Parse(otherUserId));
-                            var result = command.ExecuteScalar();
-                            if (result != null)
-                            {
-                                otherUserEmail = result.ToString();
-                            }
+                            otherUserEmail = result.ToString();
                         }
                     }
+                }
 
-                    if (string.IsNullOrEmpty(otherUserEmail))
-                    {
-                        return Json(new { success = false, message = "User not found" });
-                    }
+                if (string.IsNullOrEmpty(otherUserEmail))
+                {
+                    return Json(new { success = false, message = "User not found" });
+                }
 
-                    // Mark messages as read
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        connection.Open();
-                        var query = @"UPDATE messages 
+                // Mark messages as read
+                using (var connection = new NpgsqlConnection(connectionString))
+                {
+                    connection.Open();
+                    var query = @"UPDATE messages 
                                  SET is_read = true 
                                  WHERE receiver_email = @CurrentUserEmail 
                                  AND sender_email = @OtherUserEmail 
                                  AND is_read = false";
 
-                        using (var command = new NpgsqlCommand(query, connection))
-                        {
-                            command.Parameters.AddWithValue("@CurrentUserEmail", currentUserEmail);
-                            command.Parameters.AddWithValue("@OtherUserEmail", otherUserEmail);
-                            var rowsAffected = command.ExecuteNonQuery();
-                            Console.WriteLine($"Marked {rowsAffected} messages as read for user {otherUserId}");
-                        }
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@CurrentUserEmail", currentUserEmail);
+                        command.Parameters.AddWithValue("@OtherUserEmail", otherUserEmail);
+                        var rowsAffected = command.ExecuteNonQuery();
+                        Console.WriteLine($"Marked {rowsAffected} messages as read for user {otherUserId}");
                     }
+                }
 
-                    return Json(new { success = true });
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error marking messages as read: {ex.Message}");
-                    return Json(new { success = false, message = ex.Message });
-                }
+                return Json(new { success = true });
             }
-
-
-            [HttpPost]
-            public IActionResult Logout()
+            catch (Exception ex)
             {
-                HttpContext.Session.Clear();
-                TempData["SuccessMessage"] = "You have been logged out successfully.";
-                return RedirectToAction("UserLogin", "Account");
+                Console.WriteLine($"Error marking messages as read: {ex.Message}");
+                return Json(new { success = false, message = ex.Message });
             }
         }
 
 
-
-        // Video Call Request Models
-        public class StartCallRequest
+        [HttpPost]
+        public IActionResult Logout()
         {
-            public string ReceiverId { get; set; }
-            public string ReceiverType { get; set; } // "Student" or "Group"
-        }
-
-        public class UpdateCallStatusRequest
-        {
-            public string CallId { get; set; }
-            public string Status { get; set; } // "Initiated", "Accepted", "Rejected", "Completed", "Failed", "Missed"
-        }
-
-        public class EndCallRequest
-        {
-            public string CallId { get; set; }
-            public string Status { get; set; } = "Completed";
-        }
-
-        public class UpdateParticipantsRequest
-        {
-            public string CallId { get; set; }
-            public int ParticipantsCount { get; set; }
-        }
-
-        public class AddCallParticipantRequest
-        {
-            public string CallId { get; set; }
-            public int UserId { get; set; }
-            public string Status { get; set; }
-        }
-
-        public class UpdateCallParticipantStatusRequest
-        {
-            public string CallId { get; set; }
-            public int UserId { get; set; }
-            public string Status { get; set; }
-            public string JoinedAt { get; set; }
-        }
-
-        public class UpdateCallParticipantDurationRequest
-        {
-            public string CallId { get; set; }
-            public int UserId { get; set; }
-            public int Duration { get; set; }
-        }
-        // Existing Model Classes
-        public class AddMembersModel
-        {
-            public int GroupId { get; set; }
-            public List<string> MemberEmails { get; set; }
-        }
-
-        public class MessageViewModel
-        {
-            // ... existing properties ...
-
-            public bool IsCallMessage { get; set; }
-            public string CallDuration { get; set; }
-            public string CallStatus { get; set; }
-
-            // Add this for group call participants
-            public List<CallParticipantInfo> Participants { get; set; }
-        }
-
-        public class CallParticipantInfo
-        {
-            public string UserName { get; set; }
-            public int Duration { get; set; }
-            public string FormattedDuration { get; set; }
-        }
-
-        public class SaveCallDurationRequest
-        {
-            public string CallId { get; set; }
-            public string ReceiverId { get; set; }
-            public string GroupId { get; set; }
-            public int Duration { get; set; }
-            public string FormattedDuration { get; set; }
-            public string CallType { get; set; }
-            public bool IsInitiator { get; set; } = true;
-        }
-
-        public class UpdateGroupModel
-        {
-            public int GroupId { get; set; }
-            public string GroupName { get; set; }
-            public IFormFile GroupImage { get; set; }
+            HttpContext.Session.Clear();
+            TempData["SuccessMessage"] = "You have been logged out successfully.";
+            return RedirectToAction("UserLogin", "Account");
         }
     }
 
 
 
+    // Video Call Request Models
+    public class StartCallRequest
+    {
+        public string ReceiverId { get; set; }
+        public string ReceiverType { get; set; } // "Student" or "Group"
+    }
 
+    public class UpdateCallStatusRequest
+    {
+        public string CallId { get; set; }
+        public string Status { get; set; } // "Initiated", "Accepted", "Rejected", "Completed", "Failed", "Missed"
+    }
 
+    public class EndCallRequest
+    {
+        public string CallId { get; set; }
+        public string Status { get; set; } = "Completed";
+    }
 
+    public class UpdateParticipantsRequest
+    {
+        public string CallId { get; set; }
+        public int ParticipantsCount { get; set; }
+    }
 
+    public class AddCallParticipantRequest
+    {
+        public string CallId { get; set; }
+        public int UserId { get; set; }
+        public string Status { get; set; }
+    }
 
+    public class UpdateCallParticipantStatusRequest
+    {
+        public string CallId { get; set; }
+        public int UserId { get; set; }
+        public string Status { get; set; }
+        public string JoinedAt { get; set; }
+    }
 
+    public class UpdateCallParticipantDurationRequest
+    {
+        public string CallId { get; set; }
+        public int UserId { get; set; }
+        public int Duration { get; set; }
+    }
+    // Existing Model Classes
+    public class AddMembersModel
+    {
+        public int GroupId { get; set; }
+        public List<string> MemberEmails { get; set; }
+    }
 
+    public class MessageViewModel
+    {
+        // ... existing properties ...
 
+        public bool IsCallMessage { get; set; }
+        public string CallDuration { get; set; }
+        public string CallStatus { get; set; }
 
+        // Add this for group call participants
+        public List<CallParticipantInfo> Participants { get; set; }
+    }
 
+    public class CallParticipantInfo
+    {
+        public string UserName { get; set; }
+        public int Duration { get; set; }
+        public string FormattedDuration { get; set; }
+    }
 
+    public class SaveCallDurationRequest
+    {
+        public string CallId { get; set; }
+        public string ReceiverId { get; set; }
+        public string GroupId { get; set; }
+        public int Duration { get; set; }
+        public string FormattedDuration { get; set; }
+        public string CallType { get; set; }
+        public bool IsInitiator { get; set; } = true;
+    }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    public class UpdateGroupModel
+    {
+        public int GroupId { get; set; }
+        public string GroupName { get; set; }
+        public IFormFile GroupImage { get; set; }
+    }
+}
